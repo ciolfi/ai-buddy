@@ -9,14 +9,14 @@ let engine = null;
 let chatAbortController = null;
 
 const MY_APP_CONFIG = {
-  model_list: [
-    {
-      model_id: "SmolLM2-135M-Instruct-q0f32-MLC",
-      model_lib: "/public/models/smollm2.wasm",
-      // Use the official Hugging Face URL again - Vercel's HTTPS handles CORS better
-      model: "https://huggingface.co/mlc-ai/SmolLM2-135M-Instruct-q0f32-MLC/resolve/main/"
-    }
-  ]
+    model_list: [
+        {
+            model_id: "SmolLM2-135M-Instruct-q0f32-MLC",
+            model_lib: "/public/models/smollm2.wasm", 
+            // This specific GitHub path is structured for WebLLM compatibility
+            model: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/SmolLM2-135M-Instruct-q0f32-MLC/resolve/main/"
+        }
+    ]
 };
 
 // 2. UI Elements

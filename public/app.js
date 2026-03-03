@@ -17,8 +17,8 @@ const MY_APP_CONFIG = {
   model_list: [
     {
       model_id: "SmolLM2-135M-Instruct-q0f32-MLC",
-      // model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/SmolLM2-135M-Instruct-q0f32-ctx2k-webgpu.wasm",
-      model_lib: "https://huggingface.co/mlc-ai/SmolLM-135M-Instruct-q4f32_1-MLC",
+      model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/SmolLM2-135M-Instruct-q0f32-ctx2k-webgpu.wasm",
+       // model_lib: "https://huggingface.co/mlc-ai/SmolLM-135M-Instruct-q4f32_1-MLC",
       model: "https://huggingface.co/mlc-ai/SmolLM2-135M-Instruct-q0f32-MLC/resolve/main/"
     },
     {

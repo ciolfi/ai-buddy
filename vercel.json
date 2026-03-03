@@ -1,7 +1,7 @@
 {
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/public/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "https://ai-buddy-lime.vercel.app/" },
         { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },

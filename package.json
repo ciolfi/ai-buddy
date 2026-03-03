@@ -2,10 +2,10 @@
   "name": "ollama-js-client",
   "version": "1.0.0",
   "description": "Client-side application for Ollama API",
-  "main": "./public/app.js",
+  "main": "./index.html",
   "type": "module",
   "scripts": {
-    "start": "npx serve public",
+    "start": "npx serve .",
     "test": "node tests/client.test.js"
   },
   "dependencies": {

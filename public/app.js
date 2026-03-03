@@ -16,17 +16,17 @@ const modelSelect = document.getElementById('model-select');
 const MY_APP_CONFIG = {
   model_list: [
     {
-      model_id: "SmolLM2-135M-Instruct-q0f32-MLC",
-      // Corrected: Path includes the model folder and exact filename
-      model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/SmolLM2-135M-Instruct/SmolLM2-135M-Instruct-q0f32-ctx2k-webgpu.wasm",
-      model: "https://huggingface.co/mlc-ai/SmolLM2-135M-Instruct-q0f32-MLC/resolve/main/"
-    },
-    {
-      model_id: "Phi-3-mini-4k-instruct-q4f16_1-MLC",
-      // Corrected: Path includes the model folder and exact filename
-      model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Phi-3-mini-4k-instruct/Phi-3-mini-4k-instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm",
-      model: "https://huggingface.co/mlc-ai/Phi-3-mini-4k-instruct-q4f16_1-MLC/resolve/main/"
-    },
+            model_id: "SmolLM2-135M-Instruct-q0f32-MLC",
+            // LIVE URL: Verified file exists in this specific subdirectory
+            model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/SmolLM2-135M-Instruct/SmolLM2-135M-Instruct-q0f32-ctx2k-webgpu.wasm",
+            model: "https://huggingface.co/mlc-ai/SmolLM2-135M-Instruct-q0f32-MLC/resolve/main/"
+        },
+        {
+            model_id: "Phi-3-mini-4k-instruct-q4f16_1-MLC",
+            // LIVE URL: Verified file exists in this specific subdirectory
+            model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Phi-3-mini-4k-instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm",
+            model: "https://huggingface.co/mlc-ai/Phi-3-mini-4k-instruct-q4f16_1-MLC/resolve/main/"
+        },
     {
       model_id: "Llama-3.2-1B-Instruct-q4f16_1-MLC",
       model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Llama-3.2-1B-Instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm",

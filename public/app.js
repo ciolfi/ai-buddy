@@ -1,173 +1,137 @@
-// app.js
-import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+import * as webllm from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.46/+esm";
 import { Vault } from './vault.js';
-
-/**
- * GLOBAL DEBUGGER
- * Since you're clearing site data, we catch errors during 
- * the silent WASM loading phase.
- */
-window.addEventListener("unhandledrejection", (event) => {
-    console.error("Unhandled Promise Rejection:", event.reason);
-    alert("AI Engine Error: " + event.reason);
-});
 
 const vault = new Vault();
 let engine = null;
+let chatAbortController = null;
 
-// UI Selectors
 const downloadBtn = document.getElementById('download-btn');
-const fileInput = document.getElementById('file-input');
-const sendBtn = document.getElementById('send-btn');
-const messages = document.getElementById('messages');
 const progressBar = document.getElementById('progress-bar');
 const progressText = document.getElementById('progress-text');
+const messagesContainer = document.getElementById('messages');
+const sendBtn = document.getElementById('send-btn');
+const modelSelect = document.getElementById('model-select');
 
-/**
- * 1. APP INITIALIZATION
- */
+// 2026 OFFICIAL CDN PATHS - These bypass the manual GitHub link issues
+const MY_APP_CONFIG = {
+  model_list: [
+    {
+      model_id: "SmolLM2-135M-Instruct-q0f32-MLC",
+      // model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/SmolLM2-135M-Instruct-q0f32-ctx2k-webgpu.wasm",
+      model_lib: "https://huggingface.co/mlc-ai/SmolLM-135M-Instruct-q4f32_1-MLC",
+      model: "https://huggingface.co/mlc-ai/SmolLM2-135M-Instruct-q0f32-MLC/resolve/main/"
+    },
+    {
+      model_id: "Phi-3-mini-4k-instruct-q4f16_1-MLC",
+      model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Phi-3-mini-4k-instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm",
+      model: "https://huggingface.co/mlc-ai/Phi-3-mini-4k-instruct-q4f16_1-MLC/resolve/main/"
+    },
+    {
+      model_id: "Llama-3.2-1B-Instruct-q4f16_1-MLC",
+      model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Llama-3.2-1B-Instruct-q4f16_1-ctx4k_cs1k-webgpu.wasm",
+      model: "https://huggingface.co/mlc-ai/Llama-3.2-1B-Instruct-q4f16_1-MLC/resolve/main/"
+    }
+  ]
+};
+
 async function init() {
-    console.log("Checking WebGPU support...");
-    if (!navigator.gpu) {
-        progressText.innerText = "Error: WebGPU not supported in this browser.";
-        downloadBtn.disabled = true;
-        return;
-    }
-    
-    try {
-        await vault.init();
-        document.getElementById('gpu-status').innerText = "Vault Active | WebGPU Ready";
-    } catch (e) {
-        console.error("Vault Init Error:", e);
-    }
+  if (!navigator.gpu) {
+    document.getElementById('gpu-status').innerText = "WebGPU NOT SUPPORTED";
+    return;
+  }
+  await vault.init();
+  document.getElementById('gpu-status').innerText = "WebGPU Ready | Vault Active";
 }
 
-/**
- * 2. LOAD ENGINE (REINFORCED)
- */
 downloadBtn.addEventListener('click', async () => {
-    const modelId = document.getElementById('model-select').value;
-    
-    // UI Reset
-    downloadBtn.disabled = true;
-    if (progressBar) progressBar.style.width = "5%"; 
-    progressText.innerText = "Initializing WASM Runtime...";
+  const selectedModelId = modelSelect.value;
+  downloadBtn.disabled = true;
+  progressBar.style.width = "5%";
+  progressText.innerText = "Connecting to CDN...";
 
-    try {
-        console.log(`Starting engine load for ${modelId}...`);
+  try {
+    // Create engine with our config
+    engine = new webllm.MLCEngine({
+      initProgressCallback: (report) => {
+        const pct = Math.floor(report.progress * 100);
+        progressBar.style.width = `${pct}%`;
+        progressText.innerText = report.text;
+      },
+      appConfig: MY_APP_CONFIG
+    });
 
-        // Create the engine
-        // Note: Using CreateMLCEngine is the standard factory for 2026
-        engine = await webllm.CreateMLCEngine(modelId, {
-            initProgressCallback: (report) => {
-                // report.progress is a float 0.0 to 1.0
-                const pct = Math.floor(report.progress * 100);
-                
-                if (progressBar) progressBar.style.width = `${pct}%`;
-                if (progressText) progressText.innerText = report.text;
-                
-                // Detailed logging to verify progress is happening
-                console.log(`[${pct}%] ${report.text}`);
-            }
-        });
+    // Trigger the download
+    await engine.reload(selectedModelId);
 
-        downloadBtn.innerText = "AI Ready";
-        progressText.innerText = "Engine Loaded. Chat is active.";
-
-    } catch (err) {
-        console.error("MLC Engine Load Failed:", err);
-        progressText.innerText = "Load Failed. See Console (F12).";
-        downloadBtn.disabled = false;
-        alert("GPU Error: " + err.message);
-    }
+    downloadBtn.innerText = "AI Loaded";
+    progressText.innerText = "Model ready.";
+  } catch (err) {
+    console.error("MLC Load Error:", err);
+    // If it fails, clear the engine so we can try again
+    engine = null;
+    progressText.innerText = "Network Error: Please check CORS extension or VPN status.";
+    downloadBtn.disabled = false;
+  }
 });
 
-/**
- * 3. VAULT FILE INDEXING
- */
-fileInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const text = await file.text();
-    const progressDiv = document.getElementById('index-progress');
-    const progressPercent = document.getElementById('index-percent');
-    
-    if (progressDiv) progressDiv.style.display = 'block';
-    
-    try {
-        await vault.addText(text, (p) => {
-            if (progressPercent) progressPercent.innerText = p;
-        });
-        document.getElementById('vault-status').innerText = `Vault: ${file.name} (Active)`;
-    } catch (err) {
-        console.error("Vault Indexing Error:", err);
-        alert("Could not index file. Check if Vault is initialized.");
-    }
+// --- VAULT HANDLING ---
+document.getElementById('file-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('vault-status').innerText = "Indexing...";
+  const text = await file.text();
+  await vault.addText(text, (p) => {
+    document.getElementById('index-progress').style.display = 'block';
+    document.getElementById('index-percent').innerText = p;
+  });
+  document.getElementById('vault-status').innerText = `Vault: ${file.name} (Ready)`;
 });
 
-/**
- * 4. STREAMING CHAT (RAG)
- */
+// --- CHAT LOGIC ---
 async function handleChat() {
-    const query = document.getElementById('prompt').value.trim();
-    if (!engine) {
-        alert("Please load the AI Engine first!");
-        return;
+  const query = document.getElementById('prompt').value.trim();
+  if (!engine || !query) return;
+
+  appendMessage(query, 'user-msg');
+  document.getElementById('prompt').value = "";
+
+  chatAbortController = new AbortController();
+  const aiMsgDiv = appendMessage("Thinking...", 'ai-msg');
+  let fullText = "";
+
+  try {
+    const context = await vault.query(query);
+    const chunks = await engine.chat.completions.create({
+      messages: [
+        { role: "system", content: "Answer based on context. If none, answer generally." },
+        { role: "user", content: context ? `Context: ${context}\n\nQuestion: ${query}` : query }
+      ],
+      stream: true,
+    });
+
+    aiMsgDiv.innerText = "";
+    for await (const chunk of chunks) {
+      if (chatAbortController.signal.aborted) break;
+      fullText += (chunk.choices[0]?.delta?.content || "");
+      aiMsgDiv.innerText = fullText;
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
-    if (!query) return;
-
-    document.getElementById('prompt').value = "";
-    appendMessage(query, 'user-msg');
-
-    const aiMsgDiv = appendMessage("Thinking...", 'ai-msg');
-    let fullReply = "";
-
-    try {
-        // Query the local Vector DB (Vault)
-        const context = await vault.query(query);
-        console.log("Context Found:", context);
-
-        const messagesArr = [
-            { 
-                role: "system", 
-                content: "You are a private AI. Use the provided context to answer. If none, answer generally." 
-            },
-            { 
-                role: "user", 
-                content: context ? `Context: ${context}\n\nQuestion: ${query}` : query 
-            }
-        ];
-
-        // START STREAMING
-        const chunks = await engine.chat.completions.create({
-            messages: messagesArr,
-            stream: true,
-        });
-
-        aiMsgDiv.innerText = ""; // Clear indicator
-
-        for await (const chunk of chunks) {
-            const content = chunk.choices[0]?.delta?.content || "";
-            fullReply += content;
-            aiMsgDiv.innerText = fullReply;
-            messages.scrollTop = messages.scrollHeight;
-        }
-
-    } catch (err) {
-        console.error("Chat Error:", err);
-        aiMsgDiv.innerText = "Error: " + err.message;
-    }
-}
-
-function appendMessage(txt, cls) {
-    const d = document.createElement('div');
-    d.className = `message ${cls}`;
-    d.innerText = txt;
-    messages.appendChild(d);
-    messages.scrollTop = messages.scrollHeight;
-    return d;
+  } catch (err) {
+    if (err.name !== 'AbortError') aiMsgDiv.innerText = "Error: " + err.message;
+  } finally {
+    chatAbortController = null;
+  }
 }
 
 sendBtn.addEventListener('click', handleChat);
+
+function appendMessage(txt, cls) {
+  const d = document.createElement('div');
+  d.className = `message ${cls}`;
+  d.innerText = txt;
+  messagesContainer.appendChild(d);
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
+  return d;
+}
+
 init();

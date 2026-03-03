@@ -78,7 +78,6 @@
 
       button {
         cursor: pointer;
-        /* background-color: #007bff; */
         background-color: lightblue;
         color: black;
         border: none;
@@ -190,10 +189,13 @@
         display: none;
       }
 
-      label[for="vaultinput"] {
+      /* Labels that trigger the hidden file input */
+      .vault-label {
         cursor: pointer;
-        color: #007bff;
+        color: blue;
         text-decoration: underline;
+        font-size: 0.85rem;
+        font-weight: 500;
       }
 
       #send-btn {
@@ -213,18 +215,18 @@
           <div class="model-picker">
             <label for="model-select">Select AI Model:</label>
             <select id="model-select" title="ai model selector">
-              <option value="SmolLM2-135M-Instruct-q0f32-MLC">
-                SmolLM2 (Fastest - 200MB)
-              </option>
-              <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">
-                Llama 3.2 1B (Smartest - 1.2GB)
-              </option>
-              <option value="Phi-3-mini-4k-instruct-q4f16_1-MLC">
-                Phi-3 Mini (Balanced - 2.3GB)
-              </option>
+                <option value="SmolLM2-135M-Instruct-q0f32-MLC">
+                  SmolLM2 (Smallest/Fastest)
+                </option>
+                <option value="Phi-3-mini-4k-instruct-q4f16_1-MLC">
+                  Phi-3 Mini (Recommended)
+                </option>
+                <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">
+                  Llama 3.2 1B (Smartest)
+                </option>
             </select>
-            <button id="download-btn">Load AI Engine</button>
-            <button id="clear-cache-btn" class="danger-btn">Clear Cache</button>
+            <button id="download-btn" type="button">Load AI Engine</button>
+            <button id="clear-cache-btn" type="button" class="danger-btn">Clear Cache</button>
           </div>
 
           <div id="loading-container">
@@ -235,8 +237,9 @@
           </div>
 
           <div class="vault-section">
-            <div id="vault-status">Vault: No text loaded</div>
-            <label for="vaultinput"></label>
+            <label id="vault-status" for="file-input" class="vault-label"
+              >Vault: No text loaded (Click to upload)</label
+            >
             <input
               type="file"
               id="file-input"
@@ -264,15 +267,17 @@
     <script type="module" src="app.js"></script>
 
     <script>
-      // Simple UI feedback for the Clear Cache button since it's now in the HTML
       document
         .getElementById("clear-cache-btn")
-        ?.addEventListener("click", () => {
+        ?.addEventListener("click", async () => {
           if (confirm("Wipe all local AI models and start over?")) {
+            // Clearing Site Data Programmatically
             localStorage.clear();
-            alert(
-              "Settings cleared. Please refresh and click 'Load AI Engine'.",
-            );
+            const cachesKeys = await caches.keys();
+            for (const key of cachesKeys) {
+              await caches.delete(key);
+            }
+            alert("Cache cleared. Reloading...");
             location.reload();
           }
         });

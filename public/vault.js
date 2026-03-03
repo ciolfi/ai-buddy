@@ -1,60 +1,73 @@
-import { pipeline } from "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2";
 import {
   create,
   insert,
   search,
+  save,
+  load
 } from "https://cdn.jsdelivr.net/npm/@orama/orama@2.0.21/+esm";
 
 export class Vault {
   constructor() {
     this.db = null;
-    this.embedder = null;
+    this.isInitialized = false;
+    this.DB_KEY = "orama-vault-storage-v1";
   }
 
   async init() {
-    // 1. Create Orama Database
-    this.db = await create({
-      schema: { content: "string", embedding: "vector[384]" }, // 384 is size for all-MiniLM-L6-v2
-    });
+    if (this.isInitialized) return;
 
-    // 2. Load Embedding Model (Small & Fast)
-    this.embedder = await pipeline(
-      "feature-extraction",
-      "Xenova/all-MiniLM-L6-v2",
-    );
+    const savedData = localStorage.getItem(this.DB_KEY);
+
+    if (savedData) {
+      try {
+        console.log("Vault: Found saved data, restoring...");
+        const data = JSON.parse(savedData);
+        // Create an empty DB first
+        this.db = await create({
+          schema: { content: "string" },
+        });
+        // Use 'load' to populate it
+        await load(this.db, data);
+        this.isInitialized = true;
+        console.log("Vault: Restored successfully.");
+        return;
+      } catch (e) {
+        console.error("Vault: Restore failed, starting fresh.", e);
+      }
+    }
+
+    this.db = await create({
+      schema: { content: "string" },
+    });
+    this.isInitialized = true;
+    console.log("Vault: Ready (New).");
   }
 
   async addText(text, onProgress) {
-    // Simple chunking: split by sentences or paragraphs
-    const chunks = text.split(/\n+/).filter((t) => t.length > 20);
+    if (!this.db) await this.init();
+    
+    const chunks = text.split(/\n+/).filter((t) => t.trim().length > 20);
 
     for (let i = 0; i < chunks.length; i++) {
-      const output = await this.embedder(chunks[i], {
-        pooling: "mean",
-        normalize: true,
-      });
-      const vector = Array.from(output.data);
-
-      await insert(this.db, {
-        content: chunks[i],
-        embedding: vector,
-      });
+      await insert(this.db, { content: chunks[i] });
       if (onProgress) onProgress(Math.round(((i + 1) / chunks.length) * 100));
     }
+
+    await this.persist();
+  }
+
+  async persist() {
+    const data = await save(this.db);
+    localStorage.setItem(this.DB_KEY, JSON.stringify(data));
+    console.log("Vault: Saved to Browser Storage.");
   }
 
   async query(text) {
-    const output = await this.embedder(text, {
-      pooling: "mean",
-      normalize: true,
-    });
-    const vector = Array.from(output.data);
-
+    if (!this.db) return "";
+    
     const results = await search(this.db, {
-      mode: "vector",
-      vector: vector,
-      property: "embedding",
-      similarity: 0.75, // Adjust sensitivity
+      term: text,
+      properties: ["content"],
       limit: 3,
     });
 

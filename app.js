@@ -13,14 +13,8 @@ const MY_APP_CONFIG = {
     {
       model_id: "SmolLM2-135M-Instruct-q0f32-MLC",
       model_lib: "/public/models/smollm2.wasm",
-      // WE ARE CHANGING THIS LINE:
-      model: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/SmolLM2-135M-Instruct-q0f32-MLC/",
-    },
-    {
-      model_id: "Phi-3-mini-4k-instruct-q4f16_1-MLC",
-      model_lib: "/public/models/phi3.wasm",
-      // AND THIS ONE:
-      model: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/Phi-3-mini-4k-instruct-q4f16_1-MLC/",
+      // Use the official Hugging Face URL again - Vercel's HTTPS handles CORS better
+      model: "https://huggingface.co/mlc-ai/SmolLM2-135M-Instruct-q0f32-MLC/resolve/main/"
     }
   ]
 };

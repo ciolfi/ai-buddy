@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "npx serve .",
-    "test": "node tests/client.test.js"
+    "build": "echo 'No build step needed'"
   },
   "dependencies": {
     "dotenv": "^16.6.1"

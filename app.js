@@ -1,4 +1,3 @@
-// app.js - v2.4 (HTML-Synced + SmolLM2 16-bit)
 import * as webllm from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.80/+esm";
 
 console.log("App.js has started loading...");
@@ -8,13 +7,29 @@ const MY_APP_CONFIG = {
     model_list: [
         {
             model_id: "SmolLM2-135M-Instruct-q4f16_1-MLC",
-            // Verfied CDN path that handles the 'smollm2' naming convention correctly
-            model_lib: "https://cdn.jsdelivr.net/gh/mlc-ai/binary-mlc-llm-libs@main/SmolLM2-135M-Instruct-q4f16_1-MLC/SmolLM2-135M-Instruct-q4f16_1-MLC-webgpu.wasm", 
+            // Using a slightly different CDN mirror to bypass potential path-poisoning
+            model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/SmolLM2-135M-Instruct-q4f16_1-MLC/SmolLM2-135M-Instruct-q4f16_1-MLC-webgpu.wasm", 
             model: "https://huggingface.co/mlc-ai/SmolLM2-135M-Instruct-q4f16_1-MLC/resolve/main/",
             low_resource_required: true
         }
     ]
 };
+
+// Update the CreateMLCEngine call to include the cache scope
+const engine = await webllm.CreateMLCEngine(
+    "SmolLM2-135M-Instruct-q4f16_1-MLC", 
+    { 
+        appConfig: MY_APP_CONFIG,
+        // FORCE the engine to ignore existing broken cache entries
+        cacheConfig: { scope: "model", notebook: false }, 
+        low_resource_required: true,
+        context_window_size: 1024,
+        initProgressCallback: (report) => {
+            updateStatus(report.text);
+            updateProgressBar(report.progress * 100); 
+        }
+    }
+);
 
 // 2. UI Elements - Synced with your specific HTML IDs
 const getEl = (id) => document.getElementById(id);
@@ -122,3 +137,38 @@ if (sendBtn) {
         }
     });
 }
+
+// Add this to your Helper Functions section
+async function deepCleanWebLLMCache() {
+    updateStatus("Performing deep cache purge...");
+    try {
+        // 1. Delete all Cache Storage buckets
+        if ('caches' in window) {
+            const cacheNames = await caches.keys();
+            for (const name of cacheNames) {
+                await caches.delete(name);
+                console.log(`Deleted cache: ${name}`);
+            }
+        }
+        
+        // 2. Clear IndexedDB (WebLLM often uses this for internal state)
+        const dbs = await window.indexedDB.databases();
+        dbs.forEach(db => {
+            window.indexedDB.deleteDatabase(db.name);
+            console.log(`Deleted DB: ${db.name}`);
+        });
+
+        // 3. Clear Storage
+        localStorage.clear();
+        sessionStorage.clear();
+
+        updateStatus("Deep clean complete. Reloading...");
+        setTimeout(() => location.reload(), 1500);
+    } catch (err) {
+        console.error("Deep clean failed:", err);
+        updateStatus("Clean failed: " + err.message);
+    }
+}
+
+// Attach it to your existing button
+getEl("clear-cache-btn")?.addEventListener("click", deepCleanWebLLMCache);

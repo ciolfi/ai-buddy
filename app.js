@@ -39,31 +39,74 @@ async function init() {
   document.getElementById('gpu-status').innerText = "System Ready | Local WASM Active";
 }
 
-// 4. Loading the Engine
-downloadBtn.addEventListener('click', async () => {
-  const selectedId = modelSelect.value;
-  downloadBtn.disabled = true;
-  progressBar.style.width = "5%";
-  progressText.innerText = "Initializing Local AI Worker...";
+// // 4. Loading the Engine
+// downloadBtn.addEventListener('click', async () => {
+//   const selectedId = modelSelect.value;
+//   downloadBtn.disabled = true;
+//   progressBar.style.width = "5%";
+//   progressText.innerText = "Initializing Local AI Worker...";
 
+//   try {
+//     engine = new webllm.MLCEngine({
+//       initProgressCallback: (report) => {
+//         const pct = Math.floor(report.progress * 100);
+//         progressBar.style.width = `${pct}%`;
+//         progressText.innerText = report.text;
+//       },
+//       appConfig: MY_APP_CONFIG
+//     });
+
+//     await engine.reload(selectedId);
+//     downloadBtn.innerText = "AI Online";
+//     progressText.innerText = "Model logic and weights ready.";
+//   } catch (err) {
+//     console.error("Critical Load Failure:", err);
+//     progressText.innerText = "Error: " + err.message;
+//     downloadBtn.disabled = false;
+//     engine = null;
+//   }
+// });
+
+// --- LOAD AI ENGINE BLOCK ---
+downloadBtn.addEventListener("click", async () => {
   try {
-    engine = new webllm.MLCEngine({
-      initProgressCallback: (report) => {
-        const pct = Math.floor(report.progress * 100);
-        progressBar.style.width = `${pct}%`;
-        progressText.innerText = report.text;
-      },
-      appConfig: MY_APP_CONFIG
-    });
+    // 1. Reset UI and provide feedback
+    updateStatus("Initializing local AI...");
+    downloadBtn.disabled = true; // Prevent double-clicks during load
+    progressBar.style.width = "0%";
 
-    await engine.reload(selectedId);
-    downloadBtn.innerText = "AI Online";
-    progressText.innerText = "Model logic and weights ready.";
+    // 2. Initialize the Engine with your Custom Config
+    // We pass the EXACT model ID and the MY_APP_CONFIG map
+    const engine = await webllm.CreateMLCEngine(
+      "SmolLM2-135M-Instruct-q4f16_1-MLC",
+      {
+        appConfig: MY_APP_CONFIG,
+        // These parameters prevent the 'exit(1)' GPU crash
+        low_resource_required: true,
+        context_window_size: 1024,
+
+        // Track progress in real-time
+        initProgressCallback: (report) => {
+          console.log(report.text);
+          updateStatus(report.text);
+          // report.progress is a value between 0 and 1
+          updateProgressBar(report.progress * 100);
+        }
+      }
+    );
+
+    // 3. Store the engine globally for your 'Send' button to access
+    window.aiEngine = engine;
+
+    // 4. Success State
+    updateStatus("Model logic and weights ready.");
+    sendBtn.disabled = false; // Enable the chat button
+
   } catch (err) {
-    console.error("Critical Load Failure:", err);
-    progressText.innerText = "Error: " + err.message;
+    // If this still says 'q0f32', your PWA cache is blocking the update
+    updateStatus("Critical Load Failure: " + err);
+    console.error("Initialization Error:", err);
     downloadBtn.disabled = false;
-    engine = null;
   }
 });
 

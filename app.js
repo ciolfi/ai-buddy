@@ -13,11 +13,11 @@ const MY_APP_CONFIG = {
     {
       model_id: "SmolLM2-135M-Instruct-q0f32-MLC",
       model_lib: "/public/models/smollm2.wasm",
-      // This URL is structured exactly as the engine expects to find the config files
-      // model: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/SmolLM2-135M-Instruct-q0f32-MLC/resolve/main/"
       model: "https://huggingface.co/mlc-ai/SmolLM2-135M-Instruct-q0f32-MLC/resolve/main/",
-      // Reduce memory footprint by limiting conversation memory
-      context_window_size: 1024
+      // These specific flags prevent the VRAM overflow that causes exit(1)
+      low_resource_required: true,
+      context_window_size: 256, // Minimal memory footprint
+      prefill_chunk_size: 16    // Processes text in tiny bites to avoid GPU spikes
     }
   ]
 };

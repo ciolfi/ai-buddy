@@ -8,8 +8,8 @@ const MY_APP_CONFIG = {
     model_list: [
         {
             model_id: "SmolLM2-135M-Instruct-q4f16_1-MLC",
-            // This is the direct, verified path to the WASM binary
-            model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/smollm2-135m-instruct-q4f16_1-mlc/smollm2-135m-instruct-q4f16_1-mlc-webgpu.wasm", 
+            // Verfied CDN path that handles the 'smollm2' naming convention correctly
+            model_lib: "https://cdn.jsdelivr.net/gh/mlc-ai/binary-mlc-llm-libs@main/SmolLM2-135M-Instruct-q4f16_1-MLC/SmolLM2-135M-Instruct-q4f16_1-MLC-webgpu.wasm", 
             model: "https://huggingface.co/mlc-ai/SmolLM2-135M-Instruct-q4f16_1-MLC/resolve/main/",
             low_resource_required: true
         }

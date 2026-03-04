@@ -8,7 +8,8 @@ const MY_APP_CONFIG = {
     model_list: [
         {
             model_id: "SmolLM2-135M-Instruct-q4f16_1-MLC",
-            model_lib: "/public/models/smollm2.wasm", 
+            // We use the official MLC-compiled WASM to ensure the 'embed_tokens' match
+            model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/SmolLM2-135M-Instruct-q4f16_1-MLC/SmolLM2-135M-Instruct-q4f16_1-MLC-webgpu.wasm", 
             model: "https://huggingface.co/mlc-ai/SmolLM2-135M-Instruct-q4f16_1-MLC/resolve/main/",
             low_resource_required: true
         }

@@ -1,23 +1,22 @@
-// app.js - v2.6 (Hugging Face Sync + Consolidated Reset)
+// app.js - v2.6 (Hugging Face Production Sync)
 import * as webllm from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.80/+esm";
 
 console.log("App.js has started loading...");
 
-// 1. Configuration: Using official Hugging Face paths for reliability
+// 1. Configuration: Using official Hugging Face paths for stability
 const MY_APP_CONFIG = {
     model_list: [
         {
             model_id: "SmolLM2-135M-Instruct-q4f16_1-MLC",
-            // Direct link to the compiled WASM logic
+            // Official Hugging Face binary hosting to avoid CDN 403s/404s
             model_lib: "https://huggingface.co/mlc-ai/SmolLM2-135M-Instruct-q4f16_1-MLC/resolve/main/SmolLM2-135M-Instruct-q4f16_1-MLC-webgpu.wasm", 
-            // Path to the model weights/parameters
             model: "https://huggingface.co/mlc-ai/SmolLM2-135M-Instruct-q4f16_1-MLC/resolve/main/",
             low_resource_required: true
         }
     ]
 };
 
-// 2. UI Elements: Explicitly matched to your index.html IDs
+// 2. UI Elements: Matches your index.html exactly
 const getEl = (id) => document.getElementById(id);
 
 const downloadBtn = getEl("download-btn");
@@ -48,27 +47,28 @@ function updateProgressBar(value) {
 function appendMessage(role, text) {
     if (!chatHistory) return;
     const msgDiv = document.createElement("div");
-    // Matches your CSS: .user-msg or .ai-msg
     msgDiv.className = `message ${role}-msg`; 
     msgDiv.innerText = text;
     chatHistory.appendChild(msgDiv);
     chatHistory.scrollTop = chatHistory.scrollHeight;
 }
 
-// 4. The Consolidated "Nuclear" Reset Function
+// 4. The Nuclear Reset: Purges all corrupted cache fragments
 async function handleClearCache() {
-    updateStatus("Wiping local AI storage...");
+    updateStatus("Purging all local AI data...");
     try {
         if ('caches' in window) {
             const keys = await caches.keys();
             await Promise.all(keys.map(key => caches.delete(key)));
         }
         const dbs = await window.indexedDB.databases();
-        dbs.forEach(db => window.indexedDB.deleteDatabase(db.name));
+        for (const db of dbs) {
+            window.indexedDB.deleteDatabase(db.name);
+        }
         localStorage.clear();
         sessionStorage.clear();
         
-        updateStatus("Cache purged. Reloading page...");
+        updateStatus("Cache purged. Reloading...");
         setTimeout(() => location.reload(), 1000);
     } catch (err) {
         console.error("Reset failed:", err);
@@ -90,7 +90,6 @@ if (downloadBtn) {
                 "SmolLM2-135M-Instruct-q4f16_1-MLC", 
                 { 
                     appConfig: MY_APP_CONFIG,
-                    // Forces the engine to ignore existing broken cache entries
                     cacheConfig: { scope: "model", notebook: false }, 
                     low_resource_required: true,
                     context_window_size: 1024,
@@ -116,10 +115,10 @@ if (downloadBtn) {
 // 6. Chat Handler Block
 if (sendBtn) {
     sendBtn.addEventListener("click", async () => {
-        const prompt = userInput?.value.trim();
-        if (!prompt || !window.aiEngine) return;
+        const promptText = userInput?.value.trim();
+        if (!promptText || !window.aiEngine) return;
 
-        appendMessage("user", prompt);
+        appendMessage("user", promptText);
         userInput.value = "";
         sendBtn.disabled = true;
 
@@ -130,7 +129,7 @@ if (sendBtn) {
             chatHistory.appendChild(msgDiv);
 
             const chunks = await window.aiEngine.chat.completions.create({
-                messages: [{ role: "user", content: prompt }],
+                messages: [{ role: "user", content: promptText }],
                 stream: true
             });
 

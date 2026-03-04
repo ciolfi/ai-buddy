@@ -11,13 +11,11 @@ let chatAbortController = null;
 const MY_APP_CONFIG = {
   model_list: [
     {
-      model_id: "SmolLM2-135M-Instruct-q0f32-MLC",
+      model_id: "SmolLM2-135M-Instruct-q4f16_1-MLC", // Changed ID
       model_lib: "/public/models/smollm2.wasm",
-      model: "https://huggingface.co/mlc-ai/SmolLM2-135M-Instruct-q0f32-MLC/resolve/main/",
-      // These specific flags prevent the VRAM overflow that causes exit(1)
+      // Use the q4f16 weights instead of q0f32
+      model: "https://huggingface.co/mlc-ai/SmolLM2-135M-Instruct-q4f16_1-MLC/resolve/main/",
       low_resource_required: true,
-      context_window_size: 256, // Minimal memory footprint
-      prefill_chunk_size: 16    // Processes text in tiny bites to avoid GPU spikes
     }
   ]
 };

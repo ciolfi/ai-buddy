@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ai-vault-v2';
+const CACHE_NAME = 'ai-vault-v4';
 const ASSETS = [
   '/',
   '/index.html',
@@ -6,18 +6,43 @@ const ASSETS = [
   '/manifest.webmanifest'
 ];
 
+// 1. Install Event: Cache assets and force immediate activation
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
   );
+  // Forces the waiting service worker to become the active service worker
+  self.skipWaiting();
 });
 
-// Network-First Strategy: Better for frequently updated or large AI assets
+// 2. Activate Event: Clean up old caches and claim clients immediately
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    Promise.all([
+      // Remove old cache versions
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cache) => {
+            if (cache !== CACHE_NAME) {
+              return caches.delete(cache);
+            }
+          })
+        );
+      }),
+      // Ensure the new SW controls the page immediately
+      self.clients.claim()
+    ])
+  );
+});
+
+// 3. Fetch Event: Network-First with AI Exemption
 self.addEventListener('fetch', (event) => {
-  // EXEMPTION: Do not let the Service Worker touch WebLLM/HuggingFace requests
-  // This prevents the "Request failed" Cache error
-  if (event.request.url.includes('huggingface.co') || event.request.url.includes('mlc-ai')) {
-    return; 
+  const url = event.request.url;
+
+  // EXEMPTION: Strictly bypass Service Worker for AI model logic and weights.
+  // This prevents the 'Failed to execute add on Cache' error caused by 404s/403s.
+  if (url.includes('huggingface.co') || url.includes('mlc-ai') || url.includes('raw.githubusercontent')) {
+    return; // Let the browser handle this request normally
   }
 
   event.respondWith(

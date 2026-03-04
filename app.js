@@ -13,7 +13,7 @@ const MY_APP_CONFIG = {
         {
             model_id: "SmolLM2-135M-Instruct-q0f32-MLC",
             model_lib: "/public/models/smollm2.wasm", 
-            // This specific GitHub path is structured for WebLLM compatibility
+            // This URL is structured exactly as the engine expects to find the config files
             model: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/SmolLM2-135M-Instruct-q0f32-MLC/resolve/main/"
         }
     ]

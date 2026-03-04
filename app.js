@@ -1,182 +1,122 @@
-// import * as webllm from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.46/+esm";
-// import * as webllm from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.62/+esm";
+// app.js - v2.2 (Integrated Fixes for SmolLM2 16-bit)
 import * as webllm from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.80/+esm";
-import { Vault } from './vault.js';
 
-// 1. Setup & Configuration
-const vault = new Vault();
-let engine = null;
-let chatAbortController = null;
-
+// 1. Configuration: Mapping the Model ID to the Logic (WASM) and Weights (Hugging Face)
 const MY_APP_CONFIG = {
-  model_list: [
-    {
-      model_id: "SmolLM2-135M-Instruct-q4f16_1-MLC", // Changed ID
-      model_lib: "/public/models/smollm2.wasm",
-      // Use the q4f16 weights instead of q0f32
-      model: "https://huggingface.co/mlc-ai/SmolLM2-135M-Instruct-q4f16_1-MLC/resolve/main/",
-      low_resource_required: true,
-    }
-  ]
+    model_list: [
+        {
+            model_id: "SmolLM2-135M-Instruct-q4f16_1-MLC",
+            model_lib: "/public/models/smollm2.wasm", 
+            model: "https://huggingface.co/mlc-ai/SmolLM2-135M-Instruct-q4f16_1-MLC/resolve/main/",
+            low_resource_required: true
+        }
+    ]
 };
 
 // 2. UI Elements
-const downloadBtn = document.getElementById('download-btn');
-const progressBar = document.getElementById('progress-bar');
-const progressText = document.getElementById('progress-text');
-const messagesContainer = document.getElementById('messages');
-const sendBtn = document.getElementById('send-btn');
-const modelSelect = document.getElementById('model-select');
-const clearCacheBtn = document.getElementById('clear-cache-btn');
+const downloadBtn = document.getElementById("download-btn");
+const sendBtn = document.getElementById("send-btn");
+const userInput = document.getElementById("user-input");
+const chatHistory = document.getElementById("chat-history");
+const statusText = document.getElementById("status-text");
+const progressBar = document.getElementById("progress-bar-inner");
 
-// 3. Lifecycle & Initialization
-async function init() {
-  if (!navigator.gpu) {
-    document.getElementById('gpu-status').innerText = "WebGPU ERROR: Please use Chrome/Edge";
-    return;
-  }
-  await vault.init();
-  document.getElementById('gpu-status').innerText = "System Ready | Local WASM Active";
+// 3. Helper Functions
+function updateStatus(msg) {
+    statusText.innerText = msg;
+    console.log("Status:", msg);
 }
 
-// // 4. Loading the Engine
-// downloadBtn.addEventListener('click', async () => {
-//   const selectedId = modelSelect.value;
-//   downloadBtn.disabled = true;
-//   progressBar.style.width = "5%";
-//   progressText.innerText = "Initializing Local AI Worker...";
+function updateProgressBar(value) {
+    progressBar.style.width = `${value}%`;
+}
 
-//   try {
-//     engine = new webllm.MLCEngine({
-//       initProgressCallback: (report) => {
-//         const pct = Math.floor(report.progress * 100);
-//         progressBar.style.width = `${pct}%`;
-//         progressText.innerText = report.text;
-//       },
-//       appConfig: MY_APP_CONFIG
-//     });
+function appendMessage(role, text) {
+    const msgDiv = document.createElement("div");
+    msgDiv.className = `message ${role}-message`;
+    msgDiv.innerText = text;
+    chatHistory.appendChild(msgDiv);
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+}
 
-//     await engine.reload(selectedId);
-//     downloadBtn.innerText = "AI Online";
-//     progressText.innerText = "Model logic and weights ready.";
-//   } catch (err) {
-//     console.error("Critical Load Failure:", err);
-//     progressText.innerText = "Error: " + err.message;
-//     downloadBtn.disabled = false;
-//     engine = null;
-//   }
-// });
-
-// --- LOAD AI ENGINE BLOCK ---
+// 4. Load AI Engine Block
 downloadBtn.addEventListener("click", async () => {
-  try {
-    // 1. Reset UI and provide feedback
-    updateStatus("Initializing local AI...");
-    downloadBtn.disabled = true; // Prevent double-clicks during load
-    progressBar.style.width = "0%";
+    try {
+        updateStatus("Initializing local AI...");
+        downloadBtn.disabled = true;
+        updateProgressBar(0);
 
-    // 2. Initialize the Engine with your Custom Config
-    // We pass the EXACT model ID and the MY_APP_CONFIG map
-    const engine = await webllm.CreateMLCEngine(
-      "SmolLM2-135M-Instruct-q4f16_1-MLC",
-      {
-        appConfig: MY_APP_CONFIG,
-        // These parameters prevent the 'exit(1)' GPU crash
-        low_resource_required: true,
-        context_window_size: 1024,
+        // Initialize the Engine with the 16-bit model and memory safety
+        const engine = await webllm.CreateMLCEngine(
+            "SmolLM2-135M-Instruct-q4f16_1-MLC", 
+            { 
+                appConfig: MY_APP_CONFIG,
+                low_resource_required: true,
+                context_window_size: 1024, // Prevents VRAM overflow exit(1)
+                initProgressCallback: (report) => {
+                    updateStatus(report.text);
+                    updateProgressBar(report.progress * 100); 
+                }
+            }
+        );
 
-        // Track progress in real-time
-        initProgressCallback: (report) => {
-          console.log(report.text);
-          updateStatus(report.text);
-          // report.progress is a value between 0 and 1
-          updateProgressBar(report.progress * 100);
+        // Store globally for the Chat handler
+        window.aiEngine = engine;
+        updateStatus("Model logic and weights ready.");
+        sendBtn.disabled = false;
+
+    } catch (err) {
+        // If this still says 'q0f32', the PWA Service Worker is still ghosting old code
+        updateStatus("Critical Load Failure: " + err);
+        console.error("Initialization Error:", err);
+        downloadBtn.disabled = false;
+    }
+});
+
+// 5. Chat Handler Block
+sendBtn.addEventListener("click", async () => {
+    const prompt = userInput.value.trim();
+    if (!prompt || !window.aiEngine) return;
+
+    appendMessage("user", prompt);
+    userInput.value = "";
+    sendBtn.disabled = true;
+
+    try {
+        let aiResponse = "";
+        const msgDiv = document.createElement("div");
+        msgDiv.className = "message ai-message";
+        chatHistory.appendChild(msgDiv);
+
+        // Stream the response to the UI
+        const chunks = await window.aiEngine.chat.completions.create({
+            messages: [{ role: "user", content: prompt }],
+            stream: true
+        });
+
+        for await (const chunk of chunks) {
+            const content = chunk.choices[0]?.delta?.content || "";
+            aiResponse += content;
+            msgDiv.innerText = aiResponse;
+            chatHistory.scrollTop = chatHistory.scrollHeight;
         }
-      }
-    );
 
-    // 3. Store the engine globally for your 'Send' button to access
-    window.aiEngine = engine;
-
-    // 4. Success State
-    updateStatus("Model logic and weights ready.");
-    sendBtn.disabled = false; // Enable the chat button
-
-  } catch (err) {
-    // If this still says 'q0f32', your PWA cache is blocking the update
-    updateStatus("Critical Load Failure: " + err);
-    console.error("Initialization Error:", err);
-    downloadBtn.disabled = false;
-  }
-});
-
-// 5. Chat & RAG Logic
-async function handleChat() {
-  const query = document.getElementById('prompt').value.trim();
-  if (!engine || !query) return;
-
-  appendMessage(query, 'user-msg');
-  document.getElementById('prompt').value = "";
-  chatAbortController = new AbortController();
-  const aiMsgDiv = appendMessage("Searching Vault...", 'ai-msg');
-
-  try {
-    const context = await vault.query(query);
-    aiMsgDiv.innerText = "Generating Response...";
-
-    const chunks = await engine.chat.completions.create({
-      messages: [
-        { role: "system", content: "You are a research assistant. Use the provided context to answer. If the context is irrelevant, use your general knowledge." },
-        { role: "user", content: context ? `CONTEXT:\n${context}\n\nUSER QUESTION: ${query}` : query }
-      ],
-      stream: true,
-    });
-
-    let fullText = "";
-    aiMsgDiv.innerText = "";
-    for await (const chunk of chunks) {
-      if (chatAbortController.signal.aborted) break;
-      const content = chunk.choices[0]?.delta?.content || "";
-      fullText += content;
-      aiMsgDiv.innerText = fullText;
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    } catch (err) {
+        updateStatus("AI Error: " + err.message);
+        console.error("Chat Error:", err);
+    } finally {
+        sendBtn.disabled = false;
     }
-  } catch (err) {
-    if (err.name !== 'AbortError') aiMsgDiv.innerText = "AI Error: " + err.message;
-  }
-}
-
-// 6. Utility Functions
-function appendMessage(txt, cls) {
-  const d = document.createElement('div');
-  d.className = `message ${cls}`;
-  d.innerText = txt;
-  messagesContainer.appendChild(d);
-  return d;
-}
-
-sendBtn.addEventListener('click', handleChat);
-
-document.getElementById('file-input').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const text = await file.text();
-  await vault.addText(text, (p) => {
-    progressText.innerText = `Indexing Vault: ${p}%`;
-  });
-  progressText.innerText = "Vault indexing complete.";
 });
 
-clearCacheBtn?.addEventListener('click', async () => {
-  if (confirm("Delete local model cache?")) {
-    await webllm.hasModelInCache("SmolLM2-135M-Instruct-q0f32-MLC", MY_APP_CONFIG);
-    // This clears the browser's Cache API specifically for webllm
-    const cacheNames = await caches.keys();
-    for (const name of cacheNames) {
-      if (name.includes("webllm")) await caches.delete(name);
+// 6. Clear Cache Utility
+document.getElementById("clear-cache-btn")?.addEventListener("click", async () => {
+    if ("caches" in window) {
+        const cacheNames = await caches.keys();
+        for (let name of cacheNames) {
+            await caches.delete(name);
+        }
+        alert("Cache cleared. Please refresh the page.");
+        location.reload();
     }
-    location.reload();
-  }
 });
-
-init();

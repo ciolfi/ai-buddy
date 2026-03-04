@@ -1,3 +1,11 @@
+//Add this at the VERY top of app.js
+console.log("App.js has started loading...");
+if (!navigator.gpu) {
+    document.getElementById("gpu-status").innerText = "WebGPU Status: Not Supported";
+} else {
+    document.getElementById("gpu-status").innerText = "WebGPU Status: Supported";
+}
+
 // app.js - v2.2 (Integrated Fixes for SmolLM2 16-bit)
 import * as webllm from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.80/+esm";
 
@@ -18,7 +26,10 @@ const downloadBtn = document.getElementById("download-btn");
 const sendBtn = document.getElementById("send-btn");
 const userInput = document.getElementById("user-input");
 const chatHistory = document.getElementById("chat-history");
-const statusText = document.getElementById("status-text");
+
+// I changed this text from the commented-out line to the current one
+// const statusText = document.getElementById("status-text");
+const statusText = document.getElementById("gpu-status");
 const progressBar = document.getElementById("progress-bar-inner");
 
 // 3. Helper Functions

@@ -1,105 +1,77 @@
+// app.js - v2.5 (Final CDN Sync + Nuclear Clean)
 import * as webllm from "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.80/+esm";
 
-console.log("App.js has started loading...");
-
-// 1. Configuration
 const MY_APP_CONFIG = {
     model_list: [
         {
             model_id: "SmolLM2-135M-Instruct-q4f16_1-MLC",
-            // Using a slightly different CDN mirror to bypass potential path-poisoning
-            model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/SmolLM2-135M-Instruct-q4f16_1-MLC/SmolLM2-135M-Instruct-q4f16_1-MLC-webgpu.wasm", 
+            // FIXED: Stable CDN path that is case-insensitive and optimized for browser caching
+            model_lib: "https://cdn.jsdelivr.net/gh/mlc-ai/binary-mlc-llm-libs@main/smollm2-135m-instruct-q4f16_1-mlc/smollm2-135m-instruct-q4f16_1-mlc-webgpu.wasm", 
             model: "https://huggingface.co/mlc-ai/SmolLM2-135M-Instruct-q4f16_1-MLC/resolve/main/",
             low_resource_required: true
         }
     ]
 };
 
-// Update the CreateMLCEngine call to include the cache scope
-const engine = await webllm.CreateMLCEngine(
-    "SmolLM2-135M-Instruct-q4f16_1-MLC", 
-    { 
-        appConfig: MY_APP_CONFIG,
-        // FORCE the engine to ignore existing broken cache entries
-        cacheConfig: { scope: "model", notebook: false }, 
-        low_resource_required: true,
-        context_window_size: 1024,
-        initProgressCallback: (report) => {
-            updateStatus(report.text);
-            updateProgressBar(report.progress * 100); 
-        }
-    }
-);
-
-// 2. UI Elements - Synced with your specific HTML IDs
 const getEl = (id) => document.getElementById(id);
-
 const downloadBtn = getEl("download-btn");
 const sendBtn = getEl("send-btn");
-const userInput = getEl("prompt");      // Matches your <textarea id="prompt">
-const chatHistory = getEl("messages");  // Matches your <div id="messages">
-const gpuStatus = getEl("gpu-status");  // Matches your <div id="gpu-status">
-const progressBar = getEl("progress-bar"); // Matches your <div id="progress-bar">
-const progressText = getEl("progress-text"); // Matches your <span id="progress-text">
+const gpuStatus = getEl("gpu-status");
+const progressText = getEl("progress-text");
+const progressBar = getEl("progress-bar");
 
-// Immediate WebGPU Check
-if (gpuStatus) {
-    gpuStatus.innerText = navigator.gpu ? "WebGPU Status: Supported" : "WebGPU Status: Not Supported";
-}
-
-// 3. Helper Functions
 function updateStatus(msg) {
     if (progressText) progressText.innerText = msg;
-    console.log("Status:", msg);
+    console.log("AI Status:", msg);
 }
 
-function updateProgressBar(value) {
-    if (progressBar) {
-        progressBar.style.width = `${value}%`;
+// THE NUCLEAR CLEAN: Run this via your Clear Cache button
+async function nuclearReset() {
+    updateStatus("Purging all corrupted caches...");
+    if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(key => caches.delete(key)));
     }
+    const dbs = await window.indexedDB.databases();
+    dbs.forEach(db => window.indexedDB.deleteDatabase(db.name));
+    localStorage.clear();
+    updateStatus("Cleaned. Reloading...");
+    setTimeout(() => location.reload(), 1000);
 }
 
-function appendMessage(role, text) {
-    if (!chatHistory) return;
-    const msgDiv = document.createElement("div");
-    msgDiv.className = `message ${role}-msg`; // Matches your CSS .user-msg and .ai-msg
-    msgDiv.innerText = text;
-    chatHistory.appendChild(msgDiv);
-    chatHistory.scrollTop = chatHistory.scrollHeight;
-}
+getEl("clear-cache-btn")?.addEventListener("click", nuclearReset);
 
-// 4. Load AI Engine Block
 if (downloadBtn) {
     downloadBtn.addEventListener("click", async () => {
         try {
-            updateStatus("Initializing local AI...");
+            updateStatus("Connecting to engine...");
             downloadBtn.disabled = true;
-            updateProgressBar(0);
 
             const engine = await webllm.CreateMLCEngine(
                 "SmolLM2-135M-Instruct-q4f16_1-MLC", 
                 { 
                     appConfig: MY_APP_CONFIG,
+                    // Bypass broken local cache records
+                    cacheConfig: { scope: "model", notebook: false }, 
                     low_resource_required: true,
                     context_window_size: 1024,
                     initProgressCallback: (report) => {
                         updateStatus(report.text);
-                        updateProgressBar(report.progress * 100); 
+                        if (progressBar) progressBar.style.width = `${report.progress * 100}%`;
                     }
                 }
             );
 
             window.aiEngine = engine;
-            updateStatus("Model logic and weights ready.");
+            updateStatus("Ready.");
             if (sendBtn) sendBtn.disabled = false;
-
         } catch (err) {
-            updateStatus("Critical Load Failure: " + err);
-            console.error("Initialization Error:", err);
-            downloadBtn.disabled = false;
+            updateStatus("Critical Error: See Console");
+            console.error("LOAD ERROR:", err);
         }
     });
 }
+// ... [Keep your existing Chat Handler Block below] ...
 
 // 5. Chat Handler Block
 if (sendBtn) {

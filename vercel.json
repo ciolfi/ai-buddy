@@ -1,11 +1,43 @@
 {
+  "cleanUrls": true,
+  "trailingSlash": false,
   "headers": [
     {
-      "source": "/(.*).wasm",
+      "source": "/sw.js",
       "headers": [
-        { "key": "Content-Type", "value": "application/wasm" },
-        { "key": "Access-Control-Allow-Origin", "value": "*" }
+        { "key": "Cache-Control",              "value": "no-cache, no-store, must-revalidate" },
+        { "key": "Service-Worker-Allowed",     "value": "/" }
+      ]
+    },
+    {
+      "source": "/manifest.json",
+      "headers": [
+        { "key": "Content-Type",  "value": "application/manifest+json" },
+        { "key": "Cache-Control", "value": "public, max-age=86400" }
+      ]
+    },
+    {
+      "source": "/icons/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=604800, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options",    "value": "nosniff" },
+        { "key": "X-Frame-Options",           "value": "DENY" },
+        { "key": "X-XSS-Protection",          "value": "1; mode=block" },
+        { "key": "Referrer-Policy",           "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy",        "value": "accelerometer=(), camera=(), microphone=()" },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://esm.run https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://api.anthropic.com https://huggingface.co https://*.huggingface.co https://esm.run https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; img-src 'self' data:; worker-src 'self' blob:;"
+        }
       ]
     }
+  ],
+  "rewrites": [
+    { "source": "/((?!icons|sw.js|manifest.json|favicon.ico).*)", "destination": "/index.html" }
   ]
 }

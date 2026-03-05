@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>On-Device AI — WebLLM</title>
+
+<!--
+  ═══════════════════════════════════════════════════════════════
+  DEPENDENCY: WebLLM
+  ───────────────────────────────────────────────────────────────
+  WebLLM is an open-source library by MLC AI that compiles LLMs
+  to run entirely in the browser using two key browser APIs:
+
+    • WebGPU  — lets JavaScript talk to the GPU directly, giving
+                us the compute power needed for matrix math in LLMs.
+    • WASM    — WebAssembly module that handles the tokenizer and
+                low-level tensor operations that don't need the GPU.
+
+  We import it from a CDN as an ES module (the @ syntax is an
+  import map handled by the CDN, giving us a clean import path).
+  ═══════════════════════════════════════════════════════════════
+-->
+<script type="importmap">
+  { "imports": { "@mlc-ai/web-llm": "https://esm.run/@mlc-ai/web-llm" } }
+</script>
+
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inconsolata:wght@300;400;500&display=swap" rel="stylesheet" />
+
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   DESIGN TOKENS — all colours/spacing in one place for easy
+   theming. The palette is warm off-white + deep amber + charcoal,
+   evoking old scientific instruments and terminal readouts.
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  --bg:        #13110f;
+  --surface:   #1c1915;
+  --surface2:  #242018;
+  --border:    #2e2a24;
+  --amber:     #f0a030;
+  --amber-dim: rgba(240,160,48,.12);
+  --green:     #60d080;
+  --green-dim: rgba(96,208,128,.1);
+  --red:       #e05050;
+  --text:      #ede8df;
+  --sub:       #7a7268;
+  --mono:      'Inconsolata', monospace;
+  --sans:      'Syne', sans-serif;
+  --r:         8px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 36px 18px 60px;
+}
+
+/* Scanline texture overlay — purely decorative */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,.07) 2px,
+    rgba(0,0,0,.07) 4px
+  );
+  pointer-events: none;
+}
+
+.wrap { width: 100%; max-width: 760px; display: flex; flex-direction: column; gap: 22px; }
+
+/* ── Header ── */
+header { border-bottom: 1px solid var(--border); padding-bottom: 18px; }
+.tag {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .2em;
+  text-transform: uppercase; color: var(--amber); margin-bottom: 8px;
+}
+h1 {
+  font-family: var(--sans); font-size: clamp(1.9rem, 5vw, 3rem);
+  font-weight: 800; line-height: 1; color: var(--text); letter-spacing: -.02em;
+}
+h1 em { color: var(--amber); font-style: normal; }
+.subtitle { font-size: 12px; color: var(--sub); margin-top: 8px; line-height: 1.6; }
+
+/* ── WebGPU warning banner ── */
+.compat-warn {
+  display: none; /* shown via JS if WebGPU absent */
+  background: rgba(224,80,80,.1); border: 1px solid rgba(224,80,80,.3);
+  border-radius: var(--r); padding: 12px 16px;
+  font-size: 12px; color: #f08080; line-height: 1.6;
+}
+
+/* ── Model cards ── */
+.section-label {
+  font-size: 10px; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--sub); margin-bottom: 8px;
+}
+.model-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+
+.mcard {
+  border: 1px solid var(--border); border-radius: var(--r);
+  background: var(--surface); padding: 14px 12px;
+  cursor: pointer; transition: border-color .15s, background .15s;
+  display: flex; flex-direction: column; gap: 5px; position: relative;
+}
+.mcard::before {
+  /* accent stripe at top — hidden until selected */
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 2px; background: var(--amber);
+  border-radius: var(--r) var(--r) 0 0;
+  opacity: 0; transition: opacity .15s;
+}
+.mcard:hover:not(.disabled) { border-color: var(--sub); }
+.mcard.active { border-color: var(--amber); background: var(--amber-dim); }
+.mcard.active::before { opacity: 1; }
+.mcard.disabled { opacity: .4; cursor: not-allowed; }
+
+.mcard-name { font-family: var(--sans); font-size: 12px; font-weight: 600; color: var(--text); }
+.mcard-size {
+  font-size: 9px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--sub); background: var(--border);
+  padding: 2px 6px; border-radius: 4px; width: fit-content;
+}
+.mcard.active .mcard-size { background: rgba(240,160,48,.18); color: var(--amber); }
+.mcard-desc { font-size: 10px; color: var(--sub); line-height: 1.5; margin-top: 2px; }
+
+/* ── Download / init progress ── */
+/*
+  This section is ONLY visible while a model is being downloaded
+  or initialized. Model weights are fetched from Hugging Face's
+  CDN and stored in the browser's Cache API (similar to IndexedDB).
+  On repeat visits the model loads from local cache — no re-download.
+*/
+.progress-panel {
+  border: 1px solid var(--border); border-radius: var(--r);
+  background: var(--surface); padding: 18px 20px;
+  display: none; flex-direction: column; gap: 10px;
+}
+.progress-panel.visible { display: flex; }
+.progress-title { font-family: var(--sans); font-size: 13px; font-weight: 600; color: var(--text); }
+.progress-msg { font-size: 11px; color: var(--sub); min-height: 16px; }
+.progress-bar-wrap {
+  height: 6px; background: var(--border); border-radius: 3px; overflow: hidden;
+}
+.progress-bar {
+  height: 100%; width: 0%; background: var(--amber);
+  border-radius: 3px; transition: width .3s ease;
+}
+.progress-bytes { font-size: 10px; color: var(--sub); text-align: right; }
+
+/* ── Chat window ── */
+.chat {
+  border: 1px solid var(--border); border-radius: var(--r);
+  background: var(--surface); min-height: 280px; max-height: 400px;
+  overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 14px;
+  scroll-behavior: smooth;
+}
+.chat::-webkit-scrollbar { width: 4px; }
+.chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.empty {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 8px;
+  color: var(--sub); text-align: center; padding: 40px 0; font-size: 12px;
+}
+.empty-icon { font-size: 28px; opacity: .3; }
+
+.msg { display: flex; gap: 10px; animation: rise .2s ease; }
+@keyframes rise { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:none} }
+
+.avatar {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 10px;
+  margin-top: 2px;
+}
+.msg.user .avatar { background: var(--amber-dim); color: var(--amber); }
+.msg.ai   .avatar { background: var(--green-dim);  color: var(--green); }
+
+.msg-body { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+.msg-who { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--sub); }
+.msg-text {
+  font-size: 13px; line-height: 1.75; color: var(--text);
+  white-space: pre-wrap; word-break: break-word;
+}
+.msg.user .msg-text {
+  background: rgba(240,160,48,.07); border: 1px solid rgba(240,160,48,.14);
+  border-radius: 6px; padding: 9px 12px; color: #e8d8b0;
+}
+
+/* blinking cursor shown while streaming tokens */
+.cursor {
+  display: inline-block; width: 8px; height: 14px;
+  background: var(--green); vertical-align: text-bottom;
+  animation: blink .7s step-end infinite; margin-left: 2px;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* ── Input row ── */
+.input-row { display: flex; gap: 10px; align-items: flex-end; }
+textarea {
+  flex: 1; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 11px 14px;
+  color: var(--text); font-family: var(--mono); font-size: 13px;
+  resize: none; line-height: 1.6; outline: none;
+  min-height: 46px; max-height: 130px;
+  transition: border-color .15s;
+}
+textarea::placeholder { color: var(--sub); }
+textarea:focus { border-color: var(--amber); }
+
+.send-btn {
+  width: 46px; height: 46px; flex-shrink: 0;
+  border: 1px solid var(--amber); border-radius: var(--r);
+  background: var(--amber-dim); color: var(--amber);
+  font-size: 17px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .14s, transform .1s;
+}
+.send-btn:hover:not(:disabled) { background: rgba(240,160,48,.22); transform: scale(1.04); }
+.send-btn:disabled { opacity: .3; cursor: not-allowed; transform: none; }
+
+/* ── Status bar ── */
+.statusbar {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 10px; color: var(--sub); letter-spacing: .08em;
+}
+.dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  display: inline-block; margin-right: 6px; background: var(--sub);
+  transition: background .2s;
+}
+.dot.ready   { background: var(--green); box-shadow: 0 0 5px var(--green); }
+.dot.loading { background: var(--amber); animation: pulse 1s infinite; }
+.dot.error   { background: var(--red); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+.clear-btn {
+  background: none; border: none; color: var(--sub); font-family: var(--mono);
+  font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+  cursor: pointer; transition: color .14s;
+}
+.clear-btn:hover { color: var(--red); }
+
+@media(max-width:480px) { .model-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="tag">// on-device inference · no server · no api key</div>
+    <h1>Run <em>AI</em> in your Browser</h1>
+    <p class="subtitle">
+      Powered by WebLLM + WebGPU. Models download once, cache locally, and run 100% on your device.
+      Requires Chrome 113+ or Edge 113+ with a capable GPU.
+    </p>
+  </header>
+
+  <!-- WebGPU compatibility warning — shown by JS if GPU unavailable -->
+  <div class="compat-warn" id="compatWarn">
+    ⚠️ <strong>WebGPU not detected.</strong> This app requires a WebGPU-capable browser.
+    Please use <strong>Chrome 113+</strong> or <strong>Edge 113+</strong> on a device with a GPU.
+    Firefox and Safari do not yet support WebGPU reliably.
+  </div>
+
+  <!-- Model selector -->
+  <div>
+    <div class="section-label">Choose a model</div>
+    <div class="model-grid" id="modelGrid"></div>
+  </div>
+
+  <!--
+    ═══════════════════════════════════════════════════════════════
+    PROGRESS PANEL
+    ───────────────────────────────────────────────────────────────
+    WebLLM fires progress callbacks during two phases:
+      1. "Fetching"  — streaming model weight chunks from CDN
+      2. "Loading"   — compiling shaders & initialising the engine
+    We display both with a progress bar + human-readable byte count.
+    ═══════════════════════════════════════════════════════════════
+  -->
+  <div class="progress-panel" id="progressPanel">
+    <div class="progress-title" id="progressTitle">Preparing model…</div>
+    <div class="progress-msg"  id="progressMsg">Starting…</div>
+    <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="progress-bytes" id="progressBytes"></div>
+  </div>
+
+  <!-- Chat window -->
+  <div class="chat" id="chat">
+    <div class="empty" id="emptyState">
+      <div class="empty-icon">◈</div>
+      <div>Select a model to load it, then ask anything.</div>
+    </div>
+  </div>
+
+  <!-- Input -->
+  <div class="input-row">
+    <textarea id="input" rows="1" placeholder="Type a message…" disabled></textarea>
+    <button class="send-btn" id="sendBtn" disabled>➔</button>
+  </div>
+
+  <!-- Status bar -->
+  <div class="statusbar">
+    <div><span class="dot" id="dot"></span><span id="statusTxt">No model loaded</span></div>
+    <button class="clear-btn" id="clearBtn">Clear chat</button>
+  </div>
+
+</div><!-- /.wrap -->
+
+<!--
+  ═══════════════════════════════════════════════════════════════
+  JAVASCRIPT — type="module" is REQUIRED because WebLLM uses
+  ES module imports internally. Regular <script> tags cannot
+  import ES modules.
+  ═══════════════════════════════════════════════════════════════
+-->
+<script type="module">
+
+// ── 1. Import WebLLM ──────────────────────────────────────────────────────
+/*
+  CreateMLCEngine() is the main factory. It returns an "engine" object
+  whose API closely mirrors the OpenAI JS SDK — so if you've used that
+  before, this will feel familiar.
+*/
+import { CreateMLCEngine } from "@mlc-ai/web-llm";
+
+// ── 2. Model registry ─────────────────────────────────────────────────────
+/*
+  These model IDs are strings that WebLLM recognises. They map to
+  quantised (compressed) weight files hosted on Hugging Face.
+  "q4f16_1" means 4-bit quantisation, float-16 activations —
+  a good balance of size vs quality. Sizes are approximate.
+*/
+const MODELS = [
+  {
+    id:   "Llama-3.2-1B-Instruct-q4f16_1-MLC",
+    name: "Llama 3.2 · 1B",
+    size: "~0.7 GB",
+    desc: "Smallest & fastest. Good for simple Q&A and summaries.",
+  },
+  {
+    id:   "Phi-3.5-mini-instruct-q4f16_1-MLC",
+    name: "Phi-3.5 Mini",
+    size: "~2.1 GB",
+    desc: "Microsoft's strong small model. Best reasoning of the three.",
+  },
+  {
+    id:   "Llama-3.2-3B-Instruct-q4f16_1-MLC",
+    name: "Llama 3.2 · 3B",
+    size: "~1.9 GB",
+    desc: "Balanced size and quality. Solid general-purpose assistant.",
+  },
+];
+
+// ── 3. State ──────────────────────────────────────────────────────────────
+let engine        = null;   // the WebLLM engine instance (null until loaded)
+let loadedModelId = null;   // which model is currently in memory
+let messages      = [];     // conversation history sent to the model
+let isGenerating  = false;  // true while streaming a response
+
+// ── 4. DOM refs ───────────────────────────────────────────────────────────
+const modelGrid    = document.getElementById("modelGrid");
+const progressPanel= document.getElementById("progressPanel");
+const progressTitle= document.getElementById("progressTitle");
+const progressMsg  = document.getElementById("progressMsg");
+const progressBar  = document.getElementById("progressBar");
+const progressBytes= document.getElementById("progressBytes");
+const chat         = document.getElementById("chat");
+const input        = document.getElementById("input");
+const sendBtn      = document.getElementById("sendBtn");
+const dot          = document.getElementById("dot");
+const statusTxt    = document.getElementById("statusTxt");
+const clearBtn     = document.getElementById("clearBtn");
+const compatWarn   = document.getElementById("compatWarn");
+
+// ── 5. WebGPU check ───────────────────────────────────────────────────────
+/*
+  navigator.gpu is the entry point for the WebGPU API.
+  If it doesn't exist the browser doesn't support WebGPU at all.
+  We show a warning but don't block — the engine itself will throw
+  a cleaner error if the user tries to load a model anyway.
+*/
+if (!navigator.gpu) {
+  compatWarn.style.display = "block";
+}
+
+// ── 6. Render model cards ─────────────────────────────────────────────────
+MODELS.forEach(m => {
+  const card = document.createElement("div");
+  card.className = "mcard";
+  card.dataset.id = m.id;
+  card.innerHTML = `
+    <div class="mcard-name">${m.name}</div>
+    <div class="mcard-size">${m.size}</div>
+    <div class="mcard-desc">${m.desc}</div>
+  `;
+  card.addEventListener("click", () => loadModel(m));
+  modelGrid.appendChild(card);
+});
+
+// ── 7. Model loading ──────────────────────────────────────────────────────
+/*
+  CreateMLCEngine(modelId, { initProgressCallback })
+  ───────────────────────────────────────────────────
+  This is the heavy lifting. Under the hood it:
+    a) Checks the browser Cache API for existing weight files.
+    b) If not cached, fetches ~dozens of .bin shard files from CDN.
+    c) Compiles WebGPU shader programs for this specific GPU.
+    d) Loads all weights into GPU VRAM.
+
+  The initProgressCallback fires repeatedly with a `report` object:
+    report.progress  — float 0..1
+    report.text      — human-readable status string
+    report.timeElapsed — seconds
+*/
+async function loadModel(m) {
+  if (loadedModelId === m.id) return; // already loaded, nothing to do
+
+  // Disable all cards while loading
+  document.querySelectorAll(".mcard").forEach(c => c.classList.add("disabled"));
+  document.querySelectorAll(".mcard").forEach(c => c.classList.remove("active"));
+
+  setStatus("loading", `Loading ${m.name}…`);
+  progressPanel.classList.add("visible");
+  progressTitle.textContent = `Loading ${m.name}`;
+  progressBar.style.width = "0%";
+  progressBytes.textContent = "";
+  input.disabled = true;
+  sendBtn.disabled = true;
+
+  try {
+    engine = await CreateMLCEngine(m.id, {
+      initProgressCallback: (report) => {
+        /*
+          report.progress is 0–1. We clamp it to avoid UI glitches
+          if the library emits values slightly outside that range.
+        */
+        const pct = Math.min(100, Math.round((report.progress ?? 0) * 100));
+        progressBar.style.width = pct + "%";
+        progressMsg.textContent = report.text ?? "Working…";
+
+        // Parse MB downloaded from the report text if available
+        const match = report.text?.match(/(\d+\.?\d*)\s*MB/i);
+        if (match) progressBytes.textContent = `${match[1]} MB received`;
+      },
+    });
+
+    // ── Successfully loaded ──────────────────────────────────────────────
+    loadedModelId = m.id;
+    messages = []; // clear history for the new model
+    progressPanel.classList.remove("visible");
+    document.querySelectorAll(".mcard").forEach(c => c.classList.remove("disabled"));
+    document.querySelector(`.mcard[data-id="${m.id}"]`).classList.add("active");
+    input.disabled = false;
+    setStatus("ready", `${m.name} loaded · on-device`);
+    clearChat();
+
+  } catch (err) {
+    /*
+      Common failure modes:
+        • WebGPU not available → "WebGPU is not supported"
+        • Insufficient VRAM   → allocation error
+        • Network failure     → fetch error on weight shards
+    */
+    progressMsg.textContent = "Error: " + err.message;
+    progressBar.style.background = "var(--red)";
+    setStatus("error", "Load failed — see progress panel");
+    document.querySelectorAll(".mcard").forEach(c => c.classList.remove("disabled"));
+  }
+}
+
+// ── 8. Chat / inference ───────────────────────────────────────────────────
+/*
+  engine.chat.completions.create({ messages, stream: true })
+  ──────────────────────────────────────────────────────────
+  This mirrors the OpenAI Chat Completions API exactly.
+  `stream: true` returns an async iterator of "chunks", each with:
+    chunk.choices[0].delta.content  — the next token string (may be null)
+
+  We append each token to the DOM as it arrives — this is "streaming"
+  and gives the user the familiar typewriter effect without waiting
+  for the full response.
+
+  The system prompt primes the model's persona and response style.
+*/
+async function send() {
+  const q = input.value.trim();
+  if (!q || !engine || isGenerating) return;
+
+  input.value = "";
+  input.style.height = "auto";
+  isGenerating = true;
+  sendBtn.disabled = true;
+  setStatus("loading", "Generating…");
+
+  // Add user message to history + UI
+  messages.push({ role: "user", content: q });
+  appendMsg("user", q);
+
+  // Create an empty AI bubble with a blinking cursor
+  const { body: aiBody, textEl } = appendAIBubble();
+
+  try {
+    const stream = await engine.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: "You are a helpful, concise assistant running entirely in the user's browser via WebLLM. Answer clearly and accurately.",
+        },
+        ...messages,
+      ],
+      stream: true,         // enable token-by-token streaming
+      temperature: 0.7,     // creativity: 0=deterministic, 1=creative
+      max_tokens: 1024,
+    });
+
+    let fullReply = "";
+
+    // Iterate over streamed chunks — each chunk = one or more tokens
+    for await (const chunk of stream) {
+      const token = chunk.choices[0]?.delta?.content ?? "";
+      fullReply += token;
+      textEl.textContent = fullReply;           // update bubble in real-time
+      chat.scrollTop = chat.scrollHeight;       // keep scroll at bottom
+    }
+
+    // Remove the blinking cursor once generation is complete
+    const cursor = aiBody.querySelector(".cursor");
+    if (cursor) cursor.remove();
+
+    // Store the complete reply in conversation history
+    messages.push({ role: "assistant", content: fullReply });
+    setStatus("ready", `${loadedModelId?.split("-")[0]} · done`);
+
+  } catch (err) {
+    textEl.textContent = "Generation error: " + err.message;
+    const cursor = aiBody.querySelector(".cursor");
+    if (cursor) cursor.remove();
+    setStatus("error", "Generation failed");
+  } finally {
+    isGenerating = false;
+    sendBtn.disabled = false;
+    input.focus();
+  }
+}
+
+// ── 9. DOM helpers ────────────────────────────────────────────────────────
+
+function appendMsg(role, content) {
+  removeEmpty();
+  const wrap = document.createElement("div");
+  wrap.className = `msg ${role}`;
+  wrap.innerHTML = `
+    <div class="avatar">${role === "user" ? "U" : "AI"}</div>
+    <div class="msg-body">
+      <div class="msg-who">${role === "user" ? "You" : "Assistant"}</div>
+      <div class="msg-text">${escHtml(content)}</div>
+    </div>`;
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+/*
+  appendAIBubble() creates the streaming response container.
+  It returns a reference to both the outer body div and the
+  text element so we can update it token-by-token without
+  re-querying the DOM on every chunk.
+*/
+function appendAIBubble() {
+  removeEmpty();
+  const wrap = document.createElement("div");
+  wrap.className = "msg ai";
+
+  const avatar = document.createElement("div");
+  avatar.className = "avatar";
+  avatar.textContent = "AI";
+
+  const body = document.createElement("div");
+  body.className = "msg-body";
+
+  const who = document.createElement("div");
+  who.className = "msg-who";
+  who.textContent = "Assistant";
+
+  const textEl = document.createElement("div");
+  textEl.className = "msg-text";
+
+  // The blinking cursor — removed when streaming finishes
+  const cursor = document.createElement("span");
+  cursor.className = "cursor";
+
+  body.append(who, textEl, cursor);
+  wrap.append(avatar, body);
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+
+  return { body, textEl };
+}
+
+function removeEmpty() {
+  document.getElementById("emptyState")?.remove();
+}
+
+function clearChat() {
+  chat.innerHTML = "";
+  messages = [];
+  const empty = document.createElement("div");
+  empty.id = "emptyState";
+  empty.className = "empty";
+  empty.innerHTML = `<div class="empty-icon">◈</div><div>Model loaded. Ask anything!</div>`;
+  chat.appendChild(empty);
+}
+
+function setStatus(state, text) {
+  dot.className = "dot" + (state ? " " + state : "");
+  statusTxt.textContent = text;
+}
+
+// Prevent XSS when inserting user text as innerHTML
+function escHtml(str) {
+  return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+// ── 10. Event wiring ──────────────────────────────────────────────────────
+sendBtn.addEventListener("click", send);
+
+input.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+});
+
+// Auto-resize textarea as user types
+input.addEventListener("input", () => {
+  input.style.height = "auto";
+  input.style.height = input.scrollHeight + "px";
+});
+
+clearBtn.addEventListener("click", () => {
+  if (loadedModelId) clearChat();
+});
+
+</script>
+</body>
+</html>

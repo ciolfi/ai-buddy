@@ -6,19 +6,20 @@ console.log("App.js has started loading...");
 // 1. Configuration: Using official Hugging Face paths for stability
 const MY_APP_CONFIG = {
   model_list: [
-    // {
-    //     model_id: "SmolLM2-135M-Instruct-q4f16_1-MLC",
-    //     // DIRECT LINK: Verified lowercase path on the official CDN
-    //     model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/smollm2-135m-instruct-q4f16_1-mlc/smollm2-135m-instruct-q4f16_1-mlc-webgpu.wasm", 
-    //     model: "https://huggingface.co/mlc-ai/SmolLM2-135M-Instruct-q4f16_1-MLC/resolve/main/",
-    //     low_resource_required: true
-    // }
     {
-      model_id: "SmolLM2-135M-Instruct-q4f16_1-MLC",
-      model_lib: "https://github.com/mlc-ai/binary-mlc-llm-libs/blob/7e4a0b9dae58fb95b36190e558e4eaedd76b4362/web-llm-models/v0_2_48/SmolLM-360M-Instruct-q4f16_1-ctx2k_cs1k-webgpu.wasm",
-      // model: "https://ai-buddy-lime.vercel.app/public/models/SmolLM-360M-Instruct-q4f16_1-ctx2k_cs1k-webgpu.wasm"
-      model: "https://ai-buddy-lime.vercel.app/SmolLM-360M-Instruct-q4f16_1-ctx2k_cs1k-webgpu.wasm"
+        model_id: "SmolLM2-135M-Instruct-q4f16_1-MLC",
+        // DIRECT LINK: Verified lowercase path on the official CDN
+        model_lib: "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/smollm2-135m-instruct-q4f16_1-mlc/smollm2-135m-instruct-q4f16_1-mlc-webgpu.wasm", 
+        model: "https://huggingface.co/mlc-ai/SmolLM2-135M-Instruct-q4f16_1-MLC/resolve/main/",
+        low_resource_required: true
     }
+
+    // {
+    //   model_id: "SmolLM2-135M-Instruct-q4f16_1-MLC",
+    //   model_lib: "https://github.com/mlc-ai/binary-mlc-llm-libs/blob/7e4a0b9dae58fb95b36190e558e4eaedd76b4362/web-llm-models/v0_2_48/SmolLM-360M-Instruct-q4f16_1-ctx2k_cs1k-webgpu.wasm",
+    //   // model: "https://ai-buddy-lime.vercel.app/public/models/SmolLM-360M-Instruct-q4f16_1-ctx2k_cs1k-webgpu.wasm"
+    //   model: "https://ai-buddy-lime.vercel.app/SmolLM-360M-Instruct-q4f16_1-ctx2k_cs1k-webgpu.wasm"
+    // }
   ]
 };
 

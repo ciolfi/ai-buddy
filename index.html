@@ -832,9 +832,17 @@ async function selectModel(m) {
     enableInput();
 
   } catch(err) {
-    lbl.textContent  = "Error: "+err.message;
+    // Log the full error — err.message is often empty for WebGPU/WASM errors.
+    // err.stack, err.cause, and the stringified object give much more detail.
+    const detail = err?.message || err?.cause?.message || String(err);
+    console.error("[WebLLM] Full error object:", err);
+    console.error("[WebLLM] err.message:", err?.message);
+    console.error("[WebLLM] err.cause:",   err?.cause);
+    console.error("[WebLLM] err.stack:",   err?.stack);
+    lbl.textContent  = "Error: " + detail;
+    det.textContent  = err?.stack ? err.stack.split("\n")[0] : "";
     fill.style.background = "var(--danger)";
-    setStatus("err", "Load failed");
+    setStatus("err", "Load failed — see console (F12)");
     document.querySelectorAll(".mcard").forEach(c=>c.classList.remove("disabled"));
   }
 }

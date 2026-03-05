@@ -38,7 +38,7 @@
         { "key": "Referrer-Policy",        "value": "strict-origin-when-cross-origin" },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://esm.run https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://api.anthropic.com https://huggingface.co https://*.huggingface.co https://esm.run https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; img-src 'self' data:; worker-src 'self' blob:;"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://api.anthropic.com https://huggingface.co https://*.huggingface.co https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; img-src 'self' data:; worker-src 'self' blob:;"
         }
       ]
     }

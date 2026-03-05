@@ -1,25 +1,27 @@
 /*
  * ═══════════════════════════════════════════════════════════════
- * SERVICE WORKER — sw.js
+ * SERVICE WORKER — sw.js  (cross-origin isolation aware)
  * ───────────────────────────────────────────────────────────────
- * Responsibilities:
- *   1. Cache the app shell (HTML, manifest, icons) on install
- *   2. Serve from cache when offline (Cache-First for shell)
- *   3. Network-First for API calls (never cache Anthropic requests)
- *   4. Pass through WebLLM CDN fetches (WebLLM manages its own
- *      model cache via the browser Cache API internally)
+ * KEY FIX: The COOP/COEP headers set by Vercel only apply to
+ * the main document response. WebLLM spawns internal Web Workers
+ * from blob: URLs and fetches WASM modules — those sub-contexts
+ * also need to be cross-origin isolated for SharedArrayBuffer to
+ * work. The service worker is the only place that can intercept
+ * ALL responses (including navigations and worker scripts) and
+ * inject the required headers uniformly.
  *
- * Strategy summary:
- *   /                        → Cache-First (app shell)
- *   /manifest.json           → Cache-First
- *   /icons/*                 → Cache-First
- *   api.anthropic.com/*      → Network-Only (never cache)
- *   esm.run/*, cdnjs/*       → Network-First (CDN libs)
- *   huggingface.co/*         → Network-Only (WebLLM handles internally)
+ * This pattern mirrors coi-serviceworker, the most widely
+ * deployed solution for this problem.
+ *
+ * Strategy:
+ *   • All same-origin responses  → Cache-First + inject COOP/COEP
+ *   • api.anthropic.com          → pass through (never cache)
+ *   • huggingface.co / mlc.ai   → pass through (WebLLM manages)
+ *   • CDN assets (fonts, libs)   → Network-First + inject COOP/COEP
  * ═══════════════════════════════════════════════════════════════
  */
 
-const CACHE_NAME   = "ai-rag-shell-v1";
+const CACHE_NAME   = "ai-rag-shell-v2";   // bumped to force SW refresh
 const SHELL_ASSETS = [
   "/",
   "/index.html",
@@ -28,7 +30,30 @@ const SHELL_ASSETS = [
   "/icons/icon-512x512.png",
 ];
 
-// ── Install: pre-cache the app shell ─────────────────────────────
+/*
+  addIsolationHeaders() clones a Response and injects the two
+  headers required for cross-origin isolation:
+
+    COOP: same-origin     — prevents the page sharing a browsing
+                            context group with cross-origin pages
+    COEP: credentialless  — allows CDN assets without CORP headers
+                            while still enabling SharedArrayBuffer
+
+  Both headers together make self.crossOriginIsolated === true,
+  which is what WebLLM checks before using SharedArrayBuffer.
+*/
+function addIsolationHeaders(response) {
+  const headers = new Headers(response.headers);
+  headers.set("Cross-Origin-Opener-Policy",   "same-origin");
+  headers.set("Cross-Origin-Embedder-Policy", "credentialless");
+  return new Response(response.body, {
+    status:     response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+// ── Install: pre-cache app shell ──────────────────────────────────
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -36,7 +61,6 @@ self.addEventListener("install", (event) => {
       return cache.addAll(SHELL_ASSETS);
     })
   );
-  // Activate immediately without waiting for old SW to die
   self.skipWaiting();
 });
 
@@ -48,77 +72,73 @@ self.addEventListener("activate", (event) => {
         keys
           .filter((k) => k !== CACHE_NAME)
           .map((k) => {
-            console.log("[SW] Deleting old cache:", k);
+            console.log("[SW] Removing old cache:", k);
             return caches.delete(k);
           })
       )
     )
   );
-  // Take control of all clients immediately
   self.clients.claim();
 });
 
-// ── Fetch: route requests by strategy ────────────────────────────
+// ── Fetch: intercept + inject isolation headers ───────────────────
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // 1. Never intercept Anthropic API calls — always go to network
-  if (url.hostname === "api.anthropic.com") {
-    event.respondWith(fetch(event.request));
-    return;
-  }
+  // 1. Never intercept Anthropic API calls
+  if (url.hostname === "api.anthropic.com") return;
 
-  // 2. Never intercept HuggingFace model weight downloads —
-  //    WebLLM manages its own Cache API entries for these
+  // 2. Never intercept HuggingFace — WebLLM manages its own cache
   if (url.hostname.includes("huggingface.co") ||
-      url.hostname.includes("mlc.ai")) {
-    event.respondWith(fetch(event.request));
-    return;
-  }
+      url.hostname.includes("mlc.ai")) return;
 
-  // 3. Never intercept non-GET requests (POST, etc.)
-  if (event.request.method !== "GET") {
-    event.respondWith(fetch(event.request));
-    return;
-  }
+  // 3. Only handle GET
+  if (event.request.method !== "GET") return;
 
-  // 4. App shell — Cache-First
-  //    Serve from cache instantly; update cache in background
+  // 4. Same-origin → Cache-First + isolation headers
   if (url.origin === self.location.origin) {
     event.respondWith(
       caches.open(CACHE_NAME).then(async (cache) => {
         const cached = await cache.match(event.request);
         if (cached) {
-          // Refresh cache in background (stale-while-revalidate)
+          // Stale-while-revalidate: update cache in background
           fetch(event.request)
-            .then((fresh) => { if (fresh.ok) cache.put(event.request, fresh.clone()); })
+            .then((f) => { if (f.ok) cache.put(event.request, f.clone()); })
             .catch(() => {});
-          return cached;
+          return addIsolationHeaders(cached);
         }
-        // Not cached yet — fetch, cache, return
-        const fresh = await fetch(event.request);
-        if (fresh.ok) cache.put(event.request, fresh.clone());
-        return fresh;
-      }).catch(() => caches.match("/index.html")) // offline fallback
+        try {
+          const fresh = await fetch(event.request);
+          if (fresh.ok) cache.put(event.request, fresh.clone());
+          return addIsolationHeaders(fresh);
+        } catch {
+          const fallback = await cache.match("/index.html");
+          return fallback ? addIsolationHeaders(fallback) : Response.error();
+        }
+      })
     );
     return;
   }
 
-  // 5. CDN assets (fonts, WebLLM lib, PDF.js) — Network-First
+  // 5. Cross-origin CDN → Network-First + isolation headers
   event.respondWith(
     fetch(event.request)
       .then((res) => {
-        // Cache successful CDN responses
         if (res.ok) {
-          caches.open(CACHE_NAME).then((c) => c.put(event.request, res.clone()));
+          caches.open(CACHE_NAME)
+            .then((c) => c.put(event.request, res.clone()))
+            .catch(() => {});
         }
-        return res;
+        return addIsolationHeaders(res);
       })
-      .catch(() => caches.match(event.request)) // serve stale if offline
+      .catch(async () => {
+        const cached = await caches.match(event.request);
+        return cached ? addIsolationHeaders(cached) : Response.error();
+      })
   );
 });
 
-// ── Message: allow app to trigger cache refresh ───────────────────
+// ── Message: allow app to trigger SW update ───────────────────────
 self.addEventListener("message", (event) => {
   if (event.data === "SKIP_WAITING") self.skipWaiting();
 });

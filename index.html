@@ -570,7 +570,10 @@ textarea:focus { border-color: var(--api); }
 // WebLLM spawns workers internally; those workers cannot access the page's
 // importmap, so bare specifiers fail. Using a fully-qualified URL with
 // dynamic import() works in both the main thread and worker contexts.
-const { CreateMLCEngine } = await import("https://esm.sh/@mlc-ai/web-llm@0.2.81");
+// Load the self-hosted Vite-bundled WebLLM browser build.
+// This file is produced by running: node build-webllm.js
+// It is served same-origin from Vercel, so COEP/importmap issues don't apply.
+const { CreateMLCEngine } = await import("/web-llm-bundle.js");
 
 // ══════════════════════════════════════════════════════════════
 // 1. MODEL REGISTRY

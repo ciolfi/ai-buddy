@@ -31,10 +31,6 @@
   • PDF.js  — loaded dynamically only when a PDF is uploaded
   ═══════════════════════════════════════════════════════════════
 -->
-<script type="importmap">
-  { "imports": { "@mlc-ai/web-llm": "https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.81/lib/index.js" } }
-</script>
-
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
 
 <style>
@@ -570,7 +566,11 @@ textarea:focus { border-color: var(--api); }
      and import() support.
      ══════════════════════════════════════════════════════════════ -->
 <script type="module">
-import { CreateMLCEngine } from "@mlc-ai/web-llm";
+// Dynamic import avoids the importmap + Web Worker incompatibility.
+// WebLLM spawns workers internally; those workers cannot access the page's
+// importmap, so bare specifiers fail. Using a fully-qualified URL with
+// dynamic import() works in both the main thread and worker contexts.
+const { CreateMLCEngine } = await import("https://esm.sh/@mlc-ai/web-llm@0.2.81");
 
 // ══════════════════════════════════════════════════════════════
 // 1. MODEL REGISTRY

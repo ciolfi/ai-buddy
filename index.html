@@ -370,6 +370,9 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.3); }
   cursor: pointer; transition: border-color 0.2s, color 0.2s;
 }
 .btn-ghost:hover { border-color: var(--danger); color: var(--danger); }
+.btn-ghost-danger { margin-top: 0.4rem; }
+.btn-ghost-danger:hover { border-color: var(--danger); color: var(--danger); }
+
 .footer-note {
   text-align: center; font-size: 0.65rem; color: var(--text3);
   font-family: var(--font-mono); margin-top: 0.6rem; letter-spacing: 0.04em;
@@ -684,6 +687,65 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.3); }
 }
 .tip-icon { font-size: 0.9rem; flex-shrink: 0; margin-top: 1px; }
 .perf-tips-list strong { color: var(--text); font-weight: 600; }
+
+/* ---- Clear App Data modal ---- */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,0.7); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  animation: fade-in-back 0.2s ease;
+}
+.modal-backdrop.hidden { display: none; }
+@keyframes fade-in-back { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-box {
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: var(--radius); padding: 2rem;
+  width: min(92vw, 400px);
+  animation: fade-up 0.25s ease;
+  position: relative;
+}
+.modal-icon { font-size: 2rem; margin-bottom: 0.8rem; }
+.modal-box h3 {
+  font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text);
+}
+.modal-box p { font-size: 0.84rem; color: var(--text2); line-height: 1.6; margin-bottom: 0.5rem; }
+.modal-checklist {
+  list-style: none; margin: 0.8rem 0 1.4rem; display: flex; flex-direction: column; gap: 0.4rem;
+}
+.modal-checklist li {
+  display: flex; align-items: center; gap: 0.6rem;
+  font-size: 0.8rem; color: var(--text2);
+}
+.modal-checklist li::before {
+  content: '✓'; color: var(--danger); font-weight: 700; flex-shrink: 0;
+}
+.modal-actions { display: flex; gap: 0.7rem; }
+.btn-danger {
+  flex: 1; padding: 0.65rem;
+  background: var(--danger); border: none;
+  border-radius: var(--radius-sm);
+  color: #fff; font-family: var(--font-ui);
+  font-size: 0.85rem; font-weight: 700;
+  cursor: pointer; transition: opacity 0.2s, transform 0.15s;
+}
+.btn-danger:hover { opacity: 0.88; transform: translateY(-1px); }
+.btn-danger:active { transform: translateY(0); }
+.btn-cancel {
+  flex: 1; padding: 0.65rem;
+  background: none; border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  color: var(--text2); font-family: var(--font-ui);
+  font-size: 0.85rem; cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.btn-cancel:hover { border-color: var(--text2); color: var(--text); }
+
+.clear-data-progress {
+  margin-top: 1rem; font-family: var(--font-mono);
+  font-size: 0.76rem; color: var(--text3);
+  text-align: center; min-height: 1.2em;
+}
   </style>
 </head>
 <body>
@@ -866,6 +928,7 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.3); }
 
       <div class="sidebar-footer">
         <button id="clear-chat-btn" class="btn-ghost">🗑 Clear chat</button>
+        <button id="clear-data-btn" class="btn-ghost btn-ghost-danger">🗄️ Clear app data</button>
         <p class="footer-note">100% local · zero network calls</p>
       </div>
     </aside>
@@ -950,6 +1013,101 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.3); }
         const isOpen = body.classList.toggle('open');
         chevron.classList.toggle('open', isOpen);
         btn.setAttribute('aria-expanded', isOpen);
+      });
+    })();
+  </script>
+  <!-- Clear App Data modal -->
+  <div id="clear-data-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-box">
+      <div class="modal-icon">🗄️</div>
+      <h3 id="modal-title">Clear App Data?</h3>
+      <p>This will permanently delete:</p>
+      <ul class="modal-checklist">
+        <li>All downloaded model weights (IndexedDB)</li>
+        <li>Service worker cache (shell &amp; fonts)</li>
+        <li>Current chat history</li>
+      </ul>
+      <p>Models will need to be re-downloaded on next use. This is the best fix for <strong>Quota Exceeded</strong> errors.</p>
+      <div class="modal-actions">
+        <button id="modal-cancel-btn" class="btn-cancel">Cancel</button>
+        <button id="modal-confirm-btn" class="btn-danger">Clear everything</button>
+      </div>
+      <p class="clear-data-progress" id="clear-data-progress"></p>
+    </div>
+  </div>
+
+  <script>
+    // ── Clear App Data ──────────────────────────────────────────────────────
+    (function() {
+      const openBtn    = document.getElementById('clear-data-btn');
+      const modal      = document.getElementById('clear-data-modal');
+      const cancelBtn  = document.getElementById('modal-cancel-btn');
+      const confirmBtn = document.getElementById('modal-confirm-btn');
+      const progress   = document.getElementById('clear-data-progress');
+
+      function openModal() {
+        modal.classList.remove('hidden');
+        progress.textContent = '';
+        cancelBtn.disabled   = false;
+        confirmBtn.disabled  = false;
+      }
+      function closeModal() { modal.classList.add('hidden'); }
+
+      openBtn.addEventListener('click', openModal);
+      cancelBtn.addEventListener('click', closeModal);
+
+      // Close on backdrop click
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeModal();
+      });
+
+      // Escape key closes modal
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
+      });
+
+      confirmBtn.addEventListener('click', async function() {
+        confirmBtn.disabled = true;
+        cancelBtn.disabled  = true;
+
+        try {
+          // 1. Clear IndexedDB (WebLLM model weights)
+          progress.textContent = 'Clearing model cache…';
+          if (indexedDB.databases) {
+            const dbList = await indexedDB.databases();
+            await Promise.all(dbList.map(db => new Promise((res, rej) => {
+              const req = indexedDB.deleteDatabase(db.name);
+              req.onsuccess = res; req.onerror = rej; req.onblocked = res;
+            })));
+          }
+
+          // 2. Clear Cache API (service worker shell + fonts)
+          progress.textContent = 'Clearing service worker cache…';
+          const cacheKeys = await caches.keys();
+          await Promise.all(cacheKeys.map(k => caches.delete(k)));
+
+          // 3. Unregister service workers
+          progress.textContent = 'Unregistering service worker…';
+          if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map(r => r.unregister()));
+          }
+
+          // 4. Clear in-memory app state if available
+          if (typeof state !== 'undefined') {
+            state.messages    = [];
+            state.engine      = null;
+            state.modelLoaded = false;
+          }
+
+          progress.textContent = '✓ Done — reloading…';
+          setTimeout(() => window.location.reload(), 900);
+
+        } catch (err) {
+          progress.textContent = '✗ Error: ' + err.message;
+          confirmBtn.disabled  = false;
+          cancelBtn.disabled   = false;
+        }
       });
     })();
   </script>

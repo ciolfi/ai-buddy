@@ -1,6 +1,14 @@
 /**
  * app.js — NEURON PWA main application
  * Integrates WebLLM (client-side LLM inference) with RAG engine
+ *
+ * Model roster:
+ *   Slot 1 — Qwen2.5-0.5B-Instruct-q4f16_1-MLC     ~400 MB  (fastest)
+ *   Slot 2 — Llama-3.2-1B-Instruct-q4f16_1-MLC      ~800 MB  (balanced)
+ *   Slot 3 — Phi-3.5-mini-instruct-q4f16_1-MLC      ~1.4 GB  (smartest)
+ *             Replaces Llama-3.2-3B which caused browser storage quota errors.
+ *             Phi-3.5 Mini is a 3.8B model quantized to q4f16 — better reasoning
+ *             than the 3B Llama at a smaller on-disk footprint.
  */
 
 'use strict';

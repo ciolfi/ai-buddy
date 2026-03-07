@@ -746,6 +746,20 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.3); }
   font-size: 0.76rem; color: var(--text3);
   text-align: center; min-height: 1.2em;
 }
+
+/* ---- Footer legal links ---- */
+.footer-legal {
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.footer-legal-link {
+  font-family: var(--font-mono); font-size: 0.63rem;
+  color: var(--text3); text-decoration: none;
+  letter-spacing: 0.04em;
+  transition: color 0.2s;
+}
+.footer-legal-link:hover { color: var(--accent2); }
+.footer-legal-sep { color: var(--text3); font-size: 0.63rem; }
   </style>
 </head>
 <body>
@@ -930,6 +944,11 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.3); }
         <button id="clear-chat-btn" class="btn-ghost">🗑 Clear chat</button>
         <button id="clear-data-btn" class="btn-ghost btn-ghost-danger">🗄️ Clear app data</button>
         <p class="footer-note">100% local · zero network calls</p>
+        <div class="footer-legal">
+          <a href="privacy.html" class="footer-legal-link" target="_blank" rel="noopener">Privacy Policy</a>
+          <span class="footer-legal-sep">·</span>
+          <a href="terms.html" class="footer-legal-link" target="_blank" rel="noopener">Terms of Service</a>
+        </div>
       </div>
     </aside>
 

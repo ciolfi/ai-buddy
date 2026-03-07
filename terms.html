@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="description" content="NEURON Terms of Service — conditions for using the NEURON client-side AI assistant." />
+  <title>Terms of Service — NEURON</title>
+  <style>
+    /* ── Variables ─────────────────────────────────────────────────────── */
+    :root {
+      --bg:       #0a0a0f;
+      --bg2:      #0f0f18;
+      --surface:  #1a1a28;
+      --border:   rgba(255,255,255,0.07);
+      --border2:  rgba(255,255,255,0.12);
+      --text:     #e8e8f0;
+      --text2:    #9090b0;
+      --text3:    #5a5a7a;
+      --accent:   #a8ff78;
+      --accent2:  #78c7ff;
+      --accent3:  #ff78c7;
+      --accent4:  #ffda78;
+      --font-ui:  'Syne', sans-serif;
+      --font-mono:'DM Mono', monospace;
+      --radius:   12px;
+    }
+
+    /* ── Fonts (local) ─────────────────────────────────────────────────── */
+    @font-face { font-family:'Syne'; src:url('fonts/Syne-Regular.woff2') format('woff2'); font-weight:400; font-display:swap; }
+    @font-face { font-family:'Syne'; src:url('fonts/Syne-SemiBold.woff2') format('woff2'); font-weight:600; font-display:swap; }
+    @font-face { font-family:'Syne'; src:url('fonts/Syne-Bold.woff2') format('woff2'); font-weight:700; font-display:swap; }
+    @font-face { font-family:'Syne'; src:url('fonts/Syne-ExtraBold.woff2') format('woff2'); font-weight:800; font-display:swap; }
+    @font-face { font-family:'DM Mono'; src:url('fonts/DMMono-Light.woff2') format('woff2'); font-weight:300; font-display:swap; }
+    @font-face { font-family:'DM Mono'; src:url('fonts/DMMono-Regular.woff2') format('woff2'); font-weight:400; font-display:swap; }
+
+    /* ── Reset ─────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 15px; scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.7;
+    }
+
+    /* ── Background ────────────────────────────────────────────────────── */
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(168,255,120,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(168,255,120,0.025) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+    .grain {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.5;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    }
+
+    /* ── Layout ────────────────────────────────────────────────────────── */
+    .page-wrap {
+      position: relative; z-index: 1;
+      max-width: 760px; margin: 0 auto;
+      padding: 0 1.5rem 5rem;
+    }
+
+    /* ── Nav ───────────────────────────────────────────────────────────── */
+    nav {
+      position: sticky; top: 0; z-index: 10;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10,10,15,0.85);
+      backdrop-filter: blur(12px);
+      margin-bottom: 3.5rem;
+    }
+    .nav-brand {
+      display: flex; align-items: center; gap: 0.6rem;
+      text-decoration: none;
+    }
+    .nav-logo { width: 28px; height: 28px; }
+    .nav-name {
+      font-size: 1rem; font-weight: 800; letter-spacing: 0.14em;
+      background: linear-gradient(135deg, #a8ff78, #78c7ff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .nav-back {
+      font-size: 0.75rem; font-family: var(--font-mono);
+      color: var(--text3); text-decoration: none; letter-spacing: 0.05em;
+      transition: color 0.2s;
+    }
+    .nav-back:hover { color: var(--accent); }
+
+    /* ── Header ────────────────────────────────────────────────────────── */
+    .doc-header { margin-bottom: 3rem; }
+    .doc-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-family: var(--font-mono); font-size: 0.68rem;
+      letter-spacing: 0.1em; color: var(--accent2);
+      background: rgba(120,199,255,0.08);
+      border: 1px solid rgba(120,199,255,0.2);
+      border-radius: 20px; padding: 3px 10px;
+      margin-bottom: 1rem;
+    }
+    .doc-title {
+      font-size: clamp(2rem, 5vw, 2.8rem);
+      font-weight: 800; line-height: 1.15;
+      letter-spacing: -0.01em; margin-bottom: 0.8rem;
+    }
+    .doc-title span {
+      background: linear-gradient(135deg, #78c7ff, #ff78c7);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .doc-meta {
+      font-family: var(--font-mono); font-size: 0.75rem;
+      color: var(--text3); letter-spacing: 0.05em;
+    }
+
+    /* ── Summary card ───────────────────────────────────────────────────── */
+    .summary-card {
+      background: rgba(120,199,255,0.05);
+      border: 1px solid rgba(120,199,255,0.2);
+      border-radius: var(--radius);
+      padding: 1.4rem 1.6rem;
+      margin-bottom: 3rem;
+    }
+    .summary-card h3 {
+      font-size: 0.85rem; font-weight: 700; color: var(--accent2);
+      letter-spacing: 0.06em; text-transform: uppercase;
+      margin-bottom: 0.8rem; font-family: var(--font-mono);
+    }
+    .summary-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+    }
+    .summary-item {
+      display: flex; align-items: flex-start; gap: 0.5rem;
+      font-size: 0.8rem; color: var(--text2); line-height: 1.5;
+    }
+    .summary-item::before { content: '→'; color: var(--accent2); flex-shrink: 0; }
+    @media (max-width: 500px) { .summary-grid { grid-template-columns: 1fr; } }
+
+    /* ── Sections ───────────────────────────────────────────────────────── */
+    .doc-section { margin-bottom: 2.8rem; }
+
+    h2 {
+      font-size: 1.1rem; font-weight: 700;
+      color: var(--text); letter-spacing: 0.04em;
+      margin-bottom: 0.9rem;
+      padding-bottom: 0.6rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 0.6rem;
+    }
+    h2 .section-num {
+      font-family: var(--font-mono); font-size: 0.68rem;
+      color: var(--accent2); letter-spacing: 0.08em;
+      background: rgba(120,199,255,0.1);
+      border: 1px solid rgba(120,199,255,0.2);
+      border-radius: 4px; padding: 1px 6px;
+    }
+
+    p { color: var(--text2); font-size: 0.9rem; margin-bottom: 0.9rem; }
+    p:last-child { margin-bottom: 0; }
+
+    ul, ol {
+      color: var(--text2); font-size: 0.9rem;
+      padding-left: 1.4rem; margin-bottom: 0.9rem;
+      display: flex; flex-direction: column; gap: 0.4rem;
+    }
+    li { line-height: 1.6; }
+
+    strong { color: var(--text); font-weight: 600; }
+    .mono { font-family: var(--font-mono); font-size: 0.82em; color: var(--accent2); }
+
+    /* ── Warning block ──────────────────────────────────────────────────── */
+    .warning-block {
+      background: rgba(255,218,120,0.06);
+      border: 1px solid rgba(255,218,120,0.2);
+      border-radius: var(--radius);
+      padding: 1rem 1.2rem;
+      margin: 1rem 0;
+      font-size: 0.84rem; color: var(--text2); line-height: 1.6;
+    }
+    .warning-block strong { color: var(--accent4); }
+
+    /* ── Contact block ──────────────────────────────────────────────────── */
+    .contact-block {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 1.4rem 1.6rem;
+      margin-top: 1rem;
+    }
+    .contact-block p { margin-bottom: 0.4rem; }
+
+    /* ── Footer ─────────────────────────────────────────────────────────── */
+    .doc-footer {
+      margin-top: 4rem; padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 0.8rem;
+    }
+    .doc-footer a {
+      font-size: 0.78rem; color: var(--text3); text-decoration: none;
+      font-family: var(--font-mono); letter-spacing: 0.04em;
+      transition: color 0.2s;
+    }
+    .doc-footer a:hover { color: var(--accent); }
+    .doc-footer-copy {
+      font-size: 0.72rem; color: var(--text3);
+      font-family: var(--font-mono); letter-spacing: 0.04em;
+    }
+
+    /* ── Animation ──────────────────────────────────────────────────────── */
+    .page-wrap { animation: fade-up 0.5s ease both; }
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Responsive ─────────────────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      nav { margin-bottom: 2.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="grain"></div>
+
+  <div class="page-wrap">
+    <nav>
+      <a href="index.html" class="nav-brand">
+        <svg class="nav-logo" viewBox="0 0 36 36" fill="none">
+          <circle cx="18" cy="18" r="17" stroke="url(#ng2)" stroke-width="1.5"/>
+          <circle cx="18" cy="9"  r="2.5" fill="#a8ff78"/>
+          <circle cx="27" cy="14" r="2"   fill="#78c7ff"/>
+          <circle cx="27" cy="24" r="2"   fill="#ff78c7"/>
+          <circle cx="18" cy="28" r="2.5" fill="#ffda78"/>
+          <circle cx="9"  cy="24" r="2"   fill="#c778ff"/>
+          <circle cx="9"  cy="14" r="2"   fill="#78ffd6"/>
+          <circle cx="18" cy="18" r="3"   fill="#fff" opacity="0.9"/>
+          <line x1="18" y1="9"  x2="18" y2="15" stroke="#a8ff78" stroke-width="1" opacity="0.5"/>
+          <line x1="27" y1="14" x2="21" y2="17" stroke="#78c7ff" stroke-width="1" opacity="0.5"/>
+          <line x1="27" y1="24" x2="21" y2="19" stroke="#ff78c7" stroke-width="1" opacity="0.5"/>
+          <line x1="18" y1="28" x2="18" y2="21" stroke="#ffda78" stroke-width="1" opacity="0.5"/>
+          <line x1="9"  cy="24" x2="15" y2="19" stroke="#c778ff" stroke-width="1" opacity="0.5"/>
+          <line x1="9"  cy="14" x2="15" y2="17" stroke="#78ffd6" stroke-width="1" opacity="0.5"/>
+          <defs>
+            <linearGradient id="ng2" x1="0" y1="0" x2="36" y2="36">
+              <stop offset="0%" stop-color="#a8ff78"/>
+              <stop offset="100%" stop-color="#78c7ff"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <span class="nav-name">NEURON</span>
+      </a>
+      <a href="index.html" class="nav-back">← Back to app</a>
+    </nav>
+
+    <header class="doc-header">
+      <div class="doc-badge">📋 Legal document</div>
+      <h1 class="doc-title">Terms of <span>Service</span></h1>
+      <p class="doc-meta">Effective date: January 1, 2025 &nbsp;·&nbsp; Last updated: January 1, 2025</p>
+    </header>
+
+    <div class="summary-card">
+      <h3>Plain-language summary</h3>
+      <div class="summary-grid">
+        <div class="summary-item">Free to use for personal and commercial purposes</div>
+        <div class="summary-item">No account or registration required</div>
+        <div class="summary-item">AI responses may be inaccurate — verify important information</div>
+        <div class="summary-item">Do not use for harmful, illegal, or deceptive purposes</div>
+        <div class="summary-item">Provided as-is with no warranties</div>
+        <div class="summary-item">We may update these terms at any time</div>
+      </div>
+    </div>
+
+    <div class="doc-section">
+      <h2><span class="section-num">01</span> Acceptance of Terms</h2>
+      <p>By accessing or using NEURON ("the Application"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree to these Terms, please do not use the Application.</p>
+      <p>These Terms apply to all users of the Application, regardless of how it is accessed — via web browser, installed as a Progressive Web App, or through any other compatible means.</p>
+    </div>
+
+    <div class="doc-section">
+      <h2><span class="section-num">02</span> Description of Service</h2>
+      <p>NEURON is a client-side AI assistant that runs entirely within your web browser. It uses WebGPU and WebAssembly technology to perform AI language model inference locally on your device. Key characteristics include:</p>
+      <ul>
+        <li>All processing occurs on your device — no user content is transmitted to external servers</li>
+        <li>AI model weights are downloaded from public CDN sources and cached locally</li>
+        <li>The Application supports document upload for Retrieval-Augmented Generation (RAG), processed entirely on-device</li>
+        <li>Performance depends on your device's hardware, browser, and available memory</li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h2><span class="section-num">03</span> Permitted Use</h2>
+      <p>You may use NEURON for lawful personal, educational, research, and commercial purposes, subject to these Terms. You are responsible for all content you input into the Application and for how you use the Application's outputs.</p>
+    </div>
+
+    <div class="doc-section">
+      <h2><span class="section-num">04</span> Prohibited Use</h2>
+      <p>You agree not to use NEURON to:</p>
+      <ul>
+        <li>Generate, distribute, or facilitate illegal content of any kind</li>
+        <li>Harass, threaten, or harm any individual or group</li>
+        <li>Create or spread deliberately false or misleading information</li>
+        <li>Infringe upon the intellectual property rights of others</li>
+        <li>Attempt to circumvent, reverse-engineer, or tamper with the Application</li>
+        <li>Use outputs in any way that violates applicable local, national, or international laws</li>
+      </ul>
+    </div>
+
+    <div class="doc-section">
+      <h2><span class="section-num">05</span> AI-Generated Content Disclaimer</h2>
+      <div class="warning-block">
+        <strong>Important:</strong> NEURON uses AI language models that can produce inaccurate, incomplete, or outdated information. Outputs should not be relied upon as professional legal, medical, financial, or other expert advice.
+      </div>
+      <p>AI-generated responses may contain errors, reflect biases present in training data, or fail to account for recent developments. Always verify important information through authoritative sources before acting on it. You assume full responsibility for any decisions made based on outputs from the Application.</p>
+    </div>
+
+    <div class="doc-section">
+      <h2><span class="section-num">06</span> Intellectual Property</h2>
+      <p>The NEURON application code, design, and associated assets are the property of their respective owners. The underlying AI models used by NEURON are subject to their own open-source or permissive licenses, as published by their respective creators (including but not limited to Qwen, Meta, and Microsoft).</p>
+      <p>You retain full ownership of any content you input into the Application. Because no content is transmitted to or stored on our servers, we make no claim over your inputs or the outputs generated in response.</p>
+    </div>
+
+    <div class="doc-section">
+      <h2><span class="section-num">07</span> Disclaimer of Warranties</h2>
+      <p>NEURON is provided <strong>"as is"</strong> and <strong>"as available"</strong> without warranties of any kind, express or implied. We do not warrant that:</p>
+      <ul>
+        <li>The Application will be uninterrupted, error-free, or free of harmful components</li>
+        <li>AI-generated outputs will be accurate, complete, or fit for any particular purpose</li>
+        <li>The Application will be compatible with all devices, browsers, or operating systems</li>
+        <li>Any defects or errors will be corrected</li>
+      </ul>
+      <p>Your use of the Application is entirely at your own risk.</p>
+    </div>
+
+    <div class="doc-section">
+      <h2><span class="section-num">08</span> Limitation of Liability</h2>
+      <p>To the fullest extent permitted by applicable law, we shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising out of or related to your use of, or inability to use, NEURON — including but not limited to loss of data, loss of profits, or harm resulting from reliance on AI-generated content.</p>
+    </div>
+
+    <div class="doc-section">
+      <h2><span class="section-num">09</span> Third-Party Services</h2>
+      <p>NEURON may download AI model weights from third-party CDN providers. Your use of those services is subject to the respective providers' terms and policies. We are not responsible for the availability, content, or practices of any third-party service.</p>
+    </div>
+
+    <div class="doc-section">
+      <h2><span class="section-num">10</span> Modifications to the Service</h2>
+      <p>We reserve the right to modify, suspend, or discontinue NEURON — or any part of it — at any time, with or without notice. We shall not be liable to you or any third party for any such modification, suspension, or discontinuation.</p>
+    </div>
+
+    <div class="doc-section">
+      <h2><span class="section-num">11</span> Changes to These Terms</h2>
+      <p>We may update these Terms at any time. Changes will be posted on this page with a revised effective date. Your continued use of NEURON after any changes constitutes your acceptance of the new Terms. If you do not agree to the revised Terms, please discontinue use of the Application.</p>
+    </div>
+
+    <div class="doc-section">
+      <h2><span class="section-num">12</span> Governing Law</h2>
+      <p>These Terms shall be governed by and construed in accordance with applicable law. Any disputes arising under these Terms shall be subject to the exclusive jurisdiction of the competent courts in the applicable jurisdiction.</p>
+    </div>
+
+    <div class="doc-section">
+      <h2><span class="section-num">13</span> Contact</h2>
+      <p>If you have any questions about these Terms of Service, please contact us:</p>
+      <div class="contact-block">
+        <p><strong>NEURON App</strong></p>
+        <p>For legal inquiries: <span class="mono">legal@[yourdomain.com]</span></p>
+        <p>Response time: within 30 days</p>
+      </div>
+    </div>
+
+    <footer class="doc-footer">
+      <a href="privacy.html">Privacy Policy →</a>
+      <span class="doc-footer-copy">© 2025 NEURON. All rights reserved.</span>
+      <a href="index.html">← Back to app</a>
+    </footer>
+  </div>
+</body>
+</html>

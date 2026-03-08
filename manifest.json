@@ -35,7 +35,23 @@
       "purpose": "maskable"
     }
   ],
-  "screenshots": [],
+  "screenshots": [
+    {
+      "src": "screenshots/portrait.png",
+      "sizes": "446x978",
+      "type": "image/png"
+    },
+    {
+      "src": "landscape.png",
+      "sizes": "967x441",
+      "type": "image/png"
+    },
+    {
+      "src": "screenshots/desktop.png",
+      "sizes": "2558x1256",
+      "type": "image/png"
+    }
+  ],
   "shortcuts": [
     {
       "name": "New Chat",

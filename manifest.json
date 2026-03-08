@@ -7,7 +7,7 @@
   "background_color": "#0a0a0f",
   "theme_color": "#0a0a0f",
   "orientation": "any",
-  "id": "/?homescreen=1"
+  "id": "/?homescreen=1",
   "categories": ["productivity", "utilities"],
   "icons": [
     {

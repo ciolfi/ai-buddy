@@ -4,7 +4,7 @@
   "description": "Fully private, client-side AI assistant powered by WebLLM and WebAssembly with RAG support",
   "start_url": "./",
   "display": "standalone",
-  "display_override": "standalone window-controls-overlay",
+  "display_override": "window-controls-overlay",
   "background_color": "#0a0a0f",
   "theme_color": "#0a0a0f",
   "orientation": "any",

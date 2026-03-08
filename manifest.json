@@ -4,11 +4,29 @@
   "description": "Fully private, client-side AI assistant powered by WebLLM and WebAssembly with RAG support",
   "start_url": "./",
   "display": "standalone",
+  "display_override": "standalone",
   "background_color": "#0a0a0f",
   "theme_color": "#0a0a0f",
   "orientation": "any",
   "id": "/?homescreen=1",
-  "categories": ["productivity", "utilities"],
+  "categories": [
+    "business",
+    "education",
+    "entertainment",
+    "fitness",
+    "food",
+    "health",
+    "kids",
+    "lifestyle",
+    "music",
+    "personalization",
+    "photo",
+    "productivity",
+    "social",
+    "sports",
+    "travel",
+    "utilities"
+  ],
   "icons": [
     {
       "src": "icons/icon-192.png",
@@ -58,5 +76,18 @@
       "url": "./?new=1",
       "description": "Start a fresh conversation"
     }
-  ]
+  ],
+  "scope": "./",
+  "dir": "ltr",
+  "lang": "en",
+  "prefer_related_applications": false,
+  "protocol_handlers": [
+    {
+      "protocol": "web+neuron",
+      "url": "./?url=%s"
+    }
+  ],
+  "edge_side_panel": {
+    "preferred_width": 3
+  }
 }
